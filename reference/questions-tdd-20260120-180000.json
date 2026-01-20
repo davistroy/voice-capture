@@ -1,0 +1,69 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "topic": "Templating Engine",
+      "sections": ["3.3 Template Configuration Schema"],
+      "question": "Which templating engine should be used for page_body_template: Jinja2 or Mustache?",
+      "context": "Section 3.3 specifies 'Jinja2/Mustache template' for page body content but doesn't commit to one. Jinja2 is more powerful (filters, conditionals, loops) and native to Python. Mustache is simpler and logic-less. The example uses Jinja2 syntax ({{ context | default(...) }}). This affects dependencies and template authoring.",
+      "priority": "low"
+    },
+    {
+      "id": 2,
+      "topic": "Docker rclone Sync",
+      "sections": ["8.5 Docker Deployment"],
+      "question": "How should the rclone Docker container handle continuous syncing (once-per-minute)?",
+      "context": "The docker-compose.yml shows rclone running a single 'sync' command, which executes once and exits. For continuous sync, options include: (A) External cron on UNRAID host that restarts the container every minute, (B) rclone bisync with --resync flag and a loop/sleep script inside the container, (C) rclone mount with VFS caching instead of sync, (D) Separate cron container that triggers sync. The comment says 'via external cron or use rclone's built-in polling' but doesn't specify which.",
+      "priority": "medium"
+    },
+    {
+      "id": 3,
+      "topic": "Notion Database Structure",
+      "sections": ["13.1 Claude Skill Specification", "6.1 Environment Variables"],
+      "question": "Does the Weekly Summaries feature need a separate Notion database, and if so, should there be a separate environment variable for it?",
+      "context": "Section 13.1 references 'Create new page in Weekly Summaries database' but only NOTION_VOICE_CAPTURES_DB_ID is defined in environment variables. Options: (A) Use same database with a 'Type: Weekly Summary' property, (B) Add NOTION_WEEKLY_SUMMARIES_DB_ID environment variable for a separate database. The PRD Section 10.3 mentions 'Weekly Summaries (separate database)' suggesting option B.",
+      "priority": "medium"
+    },
+    {
+      "id": 4,
+      "topic": "Test Fixtures",
+      "sections": ["9.4 Test Data"],
+      "question": "How should test audio fixture files be created or obtained for unit/integration testing?",
+      "context": "Section 9.4 lists fixture audio files (sample_task.m4a, sample_journal.m4a, etc.) with example transcripts, but doesn't specify how to create them. Options: (A) Record actual audio samples manually, (B) Use text-to-speech to generate synthetic audio, (C) Use short public domain audio clips, (D) Skip audio fixtures entirely and mock at the API response level. For CI/CD, synthetic or mocked approaches are more reproducible.",
+      "priority": "low"
+    },
+    {
+      "id": 5,
+      "topic": "Data Model Completeness",
+      "sections": ["3.2 Core Domain Models", "4.3 Classification Service", "4.4 Notion Integration Service", "5.1 Pipeline Orchestrator"],
+      "question": "Should the TDD include full definitions for all referenced data classes (CaptureMetadata, NotionPage, DailyStats, etc.)?",
+      "context": "Several classes are referenced but not defined: TriggersConfig, FieldConfig (line 601-602), CaptureMetadata (lines 623, 641, 741), NotionPage (lines 743, 773), DailyStats (line 847), Database (lines 415, 875), ProcessingResult (lines 885, 901), PipelineConfig (line 881), HealthCheckResult (line 1533). These could be (A) fully specified in the TDD now, (B) left as implementation details to be defined during coding, or (C) documented as interface stubs with key fields only.",
+      "priority": "low"
+    }
+  ],
+  "metadata": {
+    "source_document": "docs/TDD.md",
+    "total_questions": 5,
+    "generated_at": "2026-01-20T18:00:00Z",
+    "topics_summary": [
+      "Templating Engine",
+      "Docker rclone Sync",
+      "Notion Database Structure",
+      "Test Fixtures",
+      "Data Model Completeness"
+    ],
+    "notes": "Most previous clarifications from the initial TDD review have been resolved. These are lower-priority implementation details that could be deferred to development time.",
+    "inconsistencies_found": [
+      {
+        "location": "Line 1512 (Section 10.1 Logging)",
+        "issue": "Log example shows 'confidence=0.92' for transcription but we decided to skip transcription confidence tracking",
+        "recommendation": "Remove confidence from the transcription log example"
+      },
+      {
+        "location": "Line 1898 (Document footer)",
+        "issue": "Footer says 'For implementation questions, refer to [NEED CLARIFICATION] sections' but all clarifications are now resolved",
+        "recommendation": "Update footer to reflect resolved status"
+      }
+    ]
+  }
+}
