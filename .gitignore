@@ -1,0 +1,58 @@
+# Backup files
+*.backup*
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+env/
+.env
+.venv/
+
+# Audio files (transient during processing)
+*.m4a
+*.wav
+*.mp3
+
+# Local config with secrets
+.env.local
+config/local.yaml

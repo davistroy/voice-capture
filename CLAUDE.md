@@ -37,14 +37,15 @@ Five-layer pipeline running on a home server:
 
 ## Templates
 
-Seven content types, each with specific Notion properties (see `docs/prd.md` Section 7):
-1. Meeting Note
-2. Idea / Brain Dump
-3. Task / To-Do
-4. Journal / Reflection
-5. Project Update
-6. Client / Consulting Note
-7. Generic (fallback)
+Six content types, each with specific Notion properties (see `docs/prd.md` Section 7):
+1. **Journal** — Personal reflections, daily observations, meeting reflections, mood tracking
+2. **Task** — Action items, to-dos, reminders, commitments
+3. **Idea** — Brain dumps, speculative concepts, creative possibilities
+4. **Research** — Topics to explore, questions to investigate, learning goals
+5. **Product** — Features, bugs, enhancements for things being built
+6. **General** — Fallback for anything not matching above (confidence < 0.7)
+
+**Extensibility:** Templates are config-driven (YAML in `config/templates/`). Adding a new template = add YAML file + Notion properties. No code changes. See PRD Section 7.8.
 
 ## Implementation Phases
 
@@ -55,20 +56,22 @@ Build in order — each phase has exit criteria in the PRD:
 3. **Phase 3**: Reliability hardening, Pushover notifications, daily health checks. Exit: No silent failures.
 4. **Phase 4**: Weekly synthesis Claude skill via Notion MCP.
 
-## Open Questions (Resolve Before Heavy Development)
+## Resolved Decisions
 
-The PRD (`docs/prd.md` Section 12) lists 11 architectural decisions needing clarification:
-1. Transcription endpoint selection
-2. LLM provider for classification
-3. Haptic confirmation on capture
-4. Notification method preferences
-5. Raw transcript storage location
-6. Idea categories
-7. Task sync to external apps
-8. Mood tracking in Journal
-9. Existing Notion projects DB to link
-10. Client list for recognition
-11. Notion workspace structure
+All architectural decisions have been made. See `docs/prd.md` Section 12 for the full decision log.
+
+| Decision | Choice |
+|----------|--------|
+| Transcription | OpenAI Whisper API (with abstraction for future local swap) |
+| Classification LLM | Claude Sonnet |
+| Capture confirmation | Haptic + banner notification |
+| System notifications | Pushover |
+| Task sync | Notion-only for MVP |
+| Notion structure | Dedicated area, single database with Type property |
+| Audio format | M4A (native Just Press Record default) |
+| Templates | 6 types (Journal, Task, Idea, Research, Product, General) |
+| Transcript storage | Page body under `## Raw Transcript` |
+| Classification threshold | 0.7 confidence |
 
 ## File Structure (Planned)
 
@@ -79,11 +82,19 @@ voice-capture/
 ├── src/
 │   ├── watcher/            # Folder monitoring service
 │   ├── transcription/      # Whisper API integration
-│   ├── classification/     # LLM classification service
+│   ├── classification/     # LLM classification service (reads template configs)
 │   ├── notion/             # Notion API integration
 │   └── notifications/      # Pushover integration
 ├── config/
-│   └── templates/          # Template definitions for classification prompts
+│   ├── templates/          # Template definitions (YAML) - add new templates here
+│   │   ├── _template.yaml  # Blank template for creating new ones
+│   │   ├── journal.yaml
+│   │   ├── task.yaml
+│   │   ├── idea.yaml
+│   │   ├── research.yaml
+│   │   ├── product.yaml
+│   │   └── general.yaml    # Fallback template
+│   └── classification.yaml # Global settings (threshold, etc.)
 ├── scripts/
 │   └── rclone/             # Sync scripts and cron setup
 └── tests/

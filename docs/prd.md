@@ -1,10 +1,10 @@
 # Voice Capture to Notion Pipeline
 ## Product Requirements Document
 
-**Version:** 0.1 (Draft)  
-**Author:** Troy Davis / Stratfield Consulting  
-**Date:** January 2026  
-**Status:** Requirements Gathering
+**Version:** 1.0
+**Author:** Troy Davis / Stratfield Consulting
+**Date:** January 2026
+**Status:** Ready for Implementation
 
 ---
 
@@ -80,21 +80,15 @@ This system transforms ephemeral voice captures into structured, searchable, syn
 │                          ▼                                               │
 │   ┌─────────────────────────────────────────────────────────────────┐   │
 │   │  Transcription Service                                           │   │
-│   │  [NEEDS CLARIFICATION: Which transcription endpoint?]            │   │
-│   │  Option A: OpenAI Whisper API (simplest, ~$0.006/min)           │   │
-│   │  Option B: Deepgram API (fast, good accuracy)                   │   │
-│   │  Option C: Local Whisper on Jetson Orin (free, medium model)    │   │
-│   │  Option D: Local Whisper on dual RTX 3090 rig (large-v3)        │   │
+│   │  OpenAI Whisper API (~$0.006/min)                               │   │
+│   │  - Abstraction layer allows swap to local Whisper later         │   │
+│   │  - Local options: Jetson Orin or RTX 3090 if volume justifies   │   │
 │   └─────────────────────────────────────────────────────────────────┘   │
 │                          │                                               │
 │                          ▼                                               │
 │   ┌─────────────────────────────────────────────────────────────────┐   │
 │   │  Classification & Structuring Service (LLM)                      │   │
-│   │  [NEEDS CLARIFICATION: Which LLM?]                               │   │
-│   │  Option A: Claude API (Sonnet for cost/quality balance)         │   │
-│   │  Option B: Local LLM on RTX 3090 rig                            │   │
-│   │  Option C: OpenAI GPT-4o-mini                                   │   │
-│   │                                                                  │   │
+│   │  Claude Sonnet (claude-sonnet-4-20250514)                       │   │
 │   │  - Classifies content type                                       │   │
 │   │  - Extracts structured fields per template                       │   │
 │   │  - Falls back to generic if no template fits                     │   │
@@ -163,10 +157,10 @@ This system transforms ephemeral voice captures into structured, searchable, syn
 TRIGGER: Just Press Record recording completed
 ACTION 1: Get latest recording from Just Press Record
 ACTION 2: Save file to Google Drive folder: /VoiceCaptures/inbox/
-ACTION 3: (Optional) Haptic confirmation
+ACTION 3: Haptic confirmation + brief banner notification
 ```
 
-[NEEDS CLARIFICATION: Do you want a notification/haptic when the file is saved to Google Drive, confirming the handoff worked?]
+**Confirmation:** Haptic + brief banner notification confirms successful handoff to Google Drive.
 
 **File Naming Convention:**
 `{timestamp}_{device}.m4a`
@@ -208,9 +202,7 @@ rclone mount gdrive:/VoiceCaptures /home/user/gdrive --vfs-cache-mode writes
 
 ### 6.3 Transcription Service
 
-[NEEDS CLARIFICATION: Select primary transcription approach]
-
-**Recommendation:** Start with OpenAI Whisper API for simplicity and accuracy. Migrate to local if volume/cost justifies it.
+**Selected:** OpenAI Whisper API for MVP, with abstraction layer to swap to local Whisper later if volume justifies.
 
 **Interface:**
 ```python
@@ -270,143 +262,122 @@ Respond with JSON:
 
 **Authentication:** Notion API key (internal integration)
 
+**Database Structure:** Single database with Type property (all templates share one database)
+
 **Operations:**
 - Create page in Voice Captures database
-- Set properties based on template
-- Add page content (structured + raw transcript)
+- Set properties based on template (Type property distinguishes templates)
+- Add page content (structured summary + raw transcript in page body under `## Raw Transcript`)
 - On success: delete source audio, update status
 - On failure: retry 3x, then notify
 
-[NEEDS CLARIFICATION: Should the raw transcript be stored as a page property, in the page body, or both?]
-
 ### 6.6 Notification Service
 
-**Channels:**
-[NEEDS CLARIFICATION: Preferred notification method(s)]
-- Option A: Pushover (simple, reliable push notifications)
-- Option B: Email
-- Option C: Slack/Discord webhook
-- Option D: iOS Shortcuts notification via webhook
-- Option E: Notion page in an "Errors" database
+**Selected:** Pushover ($5 one-time)
 
 **Events to Notify:**
 - Processing failure after retries exhausted
 - Daily summary: X captures processed successfully, Y failed
-- (Optional) Each successful capture confirmation
 
-**Recommendation:** Pushover for failures + daily summary; skip per-capture confirmations to maintain fire-and-forget experience.
+**Note:** Per-capture confirmations handled by iOS Shortcut (haptic + banner). Pushover is for system health only.
 
 ---
 
 ## 7. Template Definitions
 
-[NEEDS CLARIFICATION: Review and refine these templates]
+Six templates covering the primary capture types. The classifier assigns each capture to exactly one template based on content analysis.
 
-### 7.1 Meeting Note
+### 7.1 Journal
 
-**Trigger Patterns:** "meeting with...", "just finished talking to...", "call with...", discussion of attendees, action items
+**Trigger Patterns:** "today I...", "feeling...", "reflecting on...", first-person narrative about experiences, emotions, daily observations, meeting reflections, personal updates
 
 **Structured Fields:**
 | Field | Type | Description |
 |-------|------|-------------|
-| Meeting Title | Title | Auto-generated from context |
+| Title | Title | Date + brief theme (auto-generated) |
 | Date | Date | Capture timestamp |
-| Attendees | Multi-select / Text | People mentioned |
+| Mood | Select | Energized / Focused / Neutral / Tired / Frustrated |
 | Summary | Rich text | 2-3 sentence summary |
-| Key Points | Rich text | Bulleted main discussion points |
-| Action Items | Rich text | Extracted commitments/tasks |
-| Decisions | Rich text | Any decisions made |
-| Follow-ups | Rich text | Next steps mentioned |
-| Raw Transcript | Rich text | Full original text |
+| Full Entry | Rich text | Narrative content, lightly formatted |
+| People Mentioned | Multi-select | Names extracted from transcript |
+| Tags | Multi-select | Topic tags extracted by LLM |
 
-### 7.2 Idea / Brain Dump
+**Page Body:** Full transcript under `## Raw Transcript` heading
 
-**Trigger Patterns:** "idea:", "what if...", "I'm thinking...", speculative language, concept exploration
+### 7.2 Task
 
-**Structured Fields:**
-| Field | Type | Description |
-|-------|------|-------------|
-| Idea Title | Title | Core concept in 5-10 words |
-| Date | Date | Capture timestamp |
-| Category | Select | [NEEDS CLARIFICATION: What categories? Tech, Business, Personal, Creative, etc.] |
-| Core Concept | Rich text | 1-2 sentence distillation |
-| Elaboration | Rich text | Supporting thoughts, context |
-| Related To | Relation | Link to related pages if identifiable |
-| Potential Value | Select | High / Medium / Low / Unknown |
-| Next Steps | Rich text | Any mentioned follow-ups |
-| Raw Transcript | Rich text | Full original text |
-
-### 7.3 Task / To-Do
-
-**Trigger Patterns:** "I need to...", "don't forget to...", "remind me to...", "task:", imperative statements
+**Trigger Patterns:** "I need to...", "don't forget to...", "remind me to...", "task:", imperative statements, action commitments from meetings
 
 **Structured Fields:**
 | Field | Type | Description |
 |-------|------|-------------|
-| Task | Title | Action item |
+| Task | Title | Action item (concise) |
 | Date Created | Date | Capture timestamp |
 | Due Date | Date | If mentioned, otherwise empty |
 | Priority | Select | High / Medium / Low (inferred or stated) |
 | Context | Rich text | Why, for whom, related project |
-| Status | Select | Not Started (default) |
-| Raw Transcript | Rich text | Full original text |
+| Status | Select | Not Started (default) / In Progress / Complete |
+| Tags | Multi-select | Topic tags extracted by LLM |
 
-[NEEDS CLARIFICATION: Do you want tasks to also sync to a dedicated task manager (Reminders, Todoist, etc.) or Notion-only?]
+**Page Body:** Full transcript under `## Raw Transcript` heading
 
-### 7.4 Journal / Reflection
+### 7.3 Idea
 
-**Trigger Patterns:** "today I...", "feeling...", "reflecting on...", first-person narrative about experiences or emotions
-
-**Structured Fields:**
-| Field | Type | Description |
-|-------|------|-------------|
-| Entry Title | Title | Date + brief theme |
-| Date | Date | Capture timestamp |
-| Mood | Select | [NEEDS CLARIFICATION: Do you want mood tracking? Options?] |
-| Summary | Rich text | Brief summary |
-| Full Entry | Rich text | Narrative content |
-| Gratitude | Rich text | If mentioned |
-| Challenges | Rich text | If mentioned |
-| Raw Transcript | Rich text | Full original text |
-
-### 7.5 Project Update
-
-**Trigger Patterns:** "project update:", mentions of specific project names, progress language, blockers
+**Trigger Patterns:** "idea:", "what if...", "I'm thinking...", speculative language, concept exploration, brainstorming, creative possibilities
 
 **Structured Fields:**
 | Field | Type | Description |
 |-------|------|-------------|
-| Project | Title / Relation | Project name |
+| Title | Title | Core concept in 5-10 words |
 | Date | Date | Capture timestamp |
-| Status Summary | Rich text | Current state |
-| Progress | Rich text | What's been accomplished |
-| Blockers | Rich text | Issues or obstacles |
-| Next Steps | Rich text | Planned work |
-| Raw Transcript | Rich text | Full original text |
+| Core Concept | Rich text | 1-2 sentence distillation |
+| Elaboration | Rich text | Supporting thoughts, context, implications |
+| Potential Value | Select | High / Medium / Low / Unknown |
+| Next Steps | Rich text | Any mentioned follow-ups or actions to explore |
+| Tags | Multi-select | Topic tags extracted by LLM |
 
-[NEEDS CLARIFICATION: Do you have an existing Notion projects database to link to?]
+**Page Body:** Full transcript under `## Raw Transcript` heading
 
-### 7.6 Client / Consulting Note
+### 7.4 Research
 
-**Trigger Patterns:** Client names, "engagement", "deliverable", billable work context
+**Trigger Patterns:** "I want to learn about...", "need to research...", "look into...", "question about...", topics to explore, technical deep-dives, learning goals, investigation notes
 
 **Structured Fields:**
 | Field | Type | Description |
 |-------|------|-------------|
-| Title | Title | Client + topic |
-| Client | Select / Relation | Client name |
+| Title | Title | Research topic or question |
 | Date | Date | Capture timestamp |
-| Type | Select | Meeting, Insight, Issue, Opportunity |
-| Summary | Rich text | Key content |
-| Action Required | Checkbox | Is follow-up needed? |
-| Follow-up | Rich text | Specific next steps |
-| Raw Transcript | Rich text | Full original text |
+| Question/Topic | Rich text | Core question or area to investigate |
+| Why It Matters | Rich text | Context for why this is worth researching |
+| Initial Thoughts | Rich text | Any hypotheses or starting points mentioned |
+| Sources to Check | Rich text | Any mentioned resources, people to ask, places to look |
+| Status | Select | To Research / In Progress / Explored |
+| Tags | Multi-select | Topic tags extracted by LLM |
 
-[NEEDS CLARIFICATION: List of current/recent clients to recognize?]
+**Page Body:** Full transcript under `## Raw Transcript` heading
 
-### 7.7 Generic (Fallback)
+### 7.5 Product
 
-**Trigger:** No other template matches with sufficient confidence
+**Trigger Patterns:** "feature idea...", "bug in...", "the app should...", "user feedback...", product-specific mentions, UI/UX observations, technical implementation notes for things being built
+
+**Structured Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| Title | Title | Feature/issue name |
+| Date | Date | Capture timestamp |
+| Product/Project | Text | Which product or project this relates to |
+| Type | Select | Feature / Bug / Enhancement / UX / Technical Debt |
+| Description | Rich text | What it is, what it should do |
+| User Impact | Rich text | Why this matters, who it affects |
+| Implementation Notes | Rich text | Technical considerations mentioned |
+| Priority | Select | High / Medium / Low |
+| Tags | Multi-select | Topic tags extracted by LLM |
+
+**Page Body:** Full transcript under `## Raw Transcript` heading
+
+### 7.6 General (Fallback)
+
+**Trigger:** No other template matches with confidence ≥ 0.7
 
 **Structured Fields:**
 | Field | Type | Description |
@@ -416,9 +387,141 @@ Respond with JSON:
 | Duration | Number | Recording length in seconds |
 | Device | Select | Watch / Phone |
 | Summary | Rich text | LLM-generated 2-3 sentence summary |
-| Content | Rich text | Full transcript, lightly formatted |
-| Suggested Category | Select | LLM's best guess at category |
-| Raw Transcript | Rich text | Full original text |
+| Suggested Template | Select | LLM's best guess if confidence was close |
+| Tags | Multi-select | Topic tags extracted by LLM |
+
+**Page Body:** Full transcript under `## Raw Transcript` heading
+
+### 7.7 Classification Logic
+
+**Confidence Threshold:** 0.7
+
+- If highest confidence ≥ 0.7 → Use that template
+- If highest confidence < 0.7 → Use General, populate `Suggested Template` field
+
+**Overlap Handling:**
+- Meeting with action items → If primarily about the task, use **Task**; if primarily reflection on the meeting, use **Journal**
+- Client work → Classify by content type (Task, Idea, Product, etc.) not by client context
+- Learning something while building → If it's about the product, use **Product**; if it's broader learning, use **Research**
+
+### 7.8 Template Extensibility
+
+Templates are defined as configuration, not code. Adding a new template requires:
+1. Add a YAML file to `config/templates/`
+2. Create corresponding Notion database properties
+3. No code changes required
+
+**Template Definition Schema:**
+
+```yaml
+# config/templates/research.yaml
+name: research
+display_name: Research
+description: Topics to explore, questions to investigate, learning goals
+
+triggers:
+  patterns:
+    - "I want to learn about"
+    - "need to research"
+    - "look into"
+    - "question about"
+  indicators:
+    - inquiry language
+    - learning intent
+    - investigation framing
+
+fields:
+  - name: title
+    type: title
+    description: Research topic or question
+    extraction: Generate concise topic from transcript
+
+  - name: date
+    type: date
+    source: capture_timestamp
+
+  - name: question_topic
+    type: rich_text
+    description: Core question or area to investigate
+    extraction: Extract primary question or topic
+
+  - name: why_it_matters
+    type: rich_text
+    description: Context for why this is worth researching
+    extraction: Extract motivation if stated, otherwise infer
+
+  - name: initial_thoughts
+    type: rich_text
+    description: Any hypotheses or starting points mentioned
+    extraction: Extract if present, otherwise leave empty
+
+  - name: sources_to_check
+    type: rich_text
+    description: Mentioned resources, people to ask, places to look
+    extraction: Extract if present, otherwise leave empty
+
+  - name: status
+    type: select
+    options: [To Research, In Progress, Explored]
+    default: To Research
+
+  - name: tags
+    type: multi_select
+    extraction: Generate 2-5 topic tags
+
+notion:
+  database_id: ${NOTION_RESEARCH_DB_ID}  # Or use single DB with Type property
+
+page_body_template: |
+  ## Summary
+  {summary}
+
+  ## Raw Transcript
+  {transcript}
+```
+
+**How Classification Works with Config:**
+
+1. On startup, load all YAML files from `config/templates/`
+2. Build classification prompt dynamically from loaded templates
+3. LLM returns `{template: "research", confidence: 0.82, fields: {...}}`
+4. System looks up template config, maps extracted fields to Notion properties
+5. If template not found or confidence < 0.7 → Use `general.yaml`
+
+**Adding a New Template (Example: "Meeting"):**
+
+```bash
+# 1. Create template config
+cp config/templates/_template.yaml config/templates/meeting.yaml
+# Edit meeting.yaml with triggers, fields, etc.
+
+# 2. Add Notion properties (if using single database)
+# Or create new database and set NOTION_MEETING_DB_ID
+
+# 3. Restart service - new template is live
+```
+
+**Benefits:**
+- No code changes to add/modify templates
+- Classification prompt auto-generated from configs
+- Field extraction rules co-located with template definition
+- Easy to version control and review template changes
+- Can A/B test templates by toggling `enabled: true/false`
+
+**Template Config Directory Structure:**
+
+```
+config/
+├── templates/
+│   ├── _template.yaml      # Template for creating new templates
+│   ├── journal.yaml
+│   ├── task.yaml
+│   ├── idea.yaml
+│   ├── research.yaml
+│   ├── product.yaml
+│   └── general.yaml        # Fallback, always loaded last
+└── classification.yaml     # Global settings (threshold, etc.)
+```
 
 ---
 
@@ -539,19 +642,27 @@ Scheduled job (e.g., 9 PM daily):
 |---------|---------|----------------|------|
 | Google Drive | File sync | OAuth (via rclone) | Free tier sufficient |
 | OpenAI Whisper API | Transcription | API key | ~$0.006/min |
-| [LLM Provider] | Classification | API key | Varies |
+| Claude API (Sonnet) | Classification | API key | ~$3/1M input tokens |
 | Notion | Storage | Integration token | Free tier likely sufficient |
 | Pushover | Notifications | API key + user key | $5 one-time |
 
 ### 10.3 Notion Setup
 
+**Structure:** New dedicated Notion area (no Relations initially — can add later)
+
 **Required:**
 - Notion workspace
 - Internal integration with capabilities: Read/Write content, Read/Write databases
-- Voice Captures database with schema matching template fields
-- Weekly Summaries database (or page location)
+- Voice Captures database (single database with Type property for all templates)
+- Weekly Summaries database
 
-[NEEDS CLARIFICATION: Existing Notion workspace structure? Create new dedicated area or integrate into existing?]
+**Workspace Layout:**
+```
+📁 Voice Captures (top-level page)
+├── 📊 All Captures (main database, Type property distinguishes templates)
+├── 📊 Weekly Summaries (separate database)
+└── 📄 System Status (optional dashboard, Phase 3)
+```
 
 ### 10.4 Data Retention
 
@@ -607,31 +718,25 @@ Scheduled job (e.g., 9 PM daily):
 
 ---
 
-## 12. Open Questions
+## 12. Resolved Decisions
 
-[NEEDS CLARIFICATION] items consolidated:
+All architectural questions have been resolved. This section documents the decisions made.
 
-1. **Transcription endpoint:** OpenAI Whisper API (recommended), Deepgram, local Whisper on Jetson, or local on RTX 3090?
-
-2. **LLM for classification:** Claude API, local LLM, or OpenAI?
-
-3. **Confirmation feedback:** Do you want haptic/notification on successful Google Drive save?
-
-4. **Notification method:** Pushover, email, Slack, or other?
-
-5. **Raw transcript storage:** Property, page body, or both?
-
-6. **Idea categories:** What categories for the Idea template?
-
-7. **Task sync:** Notion-only or also sync to Reminders/Todoist?
-
-8. **Mood tracking:** Include in Journal template? What options?
-
-9. **Existing Notion projects database:** Do you have one to link Project Updates to?
-
-10. **Client list:** Current clients to recognize in transcripts?
-
-11. **Notion workspace structure:** New area or integrate into existing?
+| Item | Decision |
+|------|----------|
+| **Transcription** | OpenAI Whisper API for MVP, with abstraction layer to swap to local later |
+| **LLM for classification** | Claude Sonnet (claude-sonnet-4-20250514) |
+| **Capture confirmation** | Haptic + brief banner notification on successful Google Drive save |
+| **System notifications** | Pushover for failures and daily health summary |
+| **Task sync** | Notion-only for MVP; evaluate Reminders/Todoist sync later |
+| **Notion structure** | New dedicated area, no Relations initially |
+| **Database design** | Single database with Type property (all templates share one DB) |
+| **Audio format** | Native Just Press Record format (M4A) — no configuration change |
+| **Templates** | 6 templates: Journal, Task, Idea, Research, Product, General |
+| **Raw transcript storage** | Page body only (under `## Raw Transcript` heading) |
+| **Mood tracking** | Yes, 5 options: Energized / Focused / Neutral / Tired / Frustrated |
+| **Classification threshold** | 0.7 confidence; below that → General template |
+| **Template extensibility** | Config-driven YAML in `config/templates/` |
 
 ---
 
@@ -667,7 +772,7 @@ Not used for pipeline: Quality is good but no structured output or API access to
 ## Appendix B: Just Press Record Settings
 
 Recommended settings for pipeline compatibility:
-- **Recording Format:** [NEEDS CLARIFICATION: M4A vs WAV? M4A is smaller, WAV is lossless]
+- **Recording Format:** M4A (native default — no change needed)
 - **iCloud Sync:** Disabled (using Google Drive via Shortcuts instead)
 - **Auto-Transcribe:** Optional (not used by pipeline)
 - **Apple Watch Complication:** Add to watch face for quick access
