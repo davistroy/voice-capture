@@ -51,3 +51,21 @@ Established the foundational project infrastructure including Python project con
 
 **Summary:**
 Implemented SQLite database layer with aiosqlite for async operations. Created schema for captures, failure_log, and daily_stats tables with all CRUD operations and proper transaction handling. Includes CLI command for database initialization and comprehensive unit tests.
+
+---
+
+## 2026-01-20
+
+### Work Item 1.3: Domain Models
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/models/__init__.py`
+- `src/models/capture.py`
+- `src/models/transcription.py`
+- `src/models/classification.py`
+- `tests/test_models.py`
+
+**Summary:**
+Implemented Python dataclasses for domain models: ProcessingStatus enum, Device enum, TranscriptionResult, ClassificationResult, and CaptureRecord. These models serve as the contract between pipeline components with serialization/deserialization methods for database persistence.

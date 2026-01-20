@@ -138,7 +138,7 @@ Use `aiosqlite` for async operations. JSON fields stored as TEXT with json.dumps
 
 ---
 
-#### 1.3 Domain Models
+#### 1.3 Domain Models ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §3.2
 **Files Affected:**
@@ -152,19 +152,19 @@ Use `aiosqlite` for async operations. JSON fields stored as TEXT with json.dumps
 Implement Python dataclasses for domain models: ProcessingStatus enum, Device enum, TranscriptionResult, ClassificationResult, and CaptureRecord. These models are the contract between pipeline components.
 
 **Tasks:**
-1. [ ] Create ProcessingStatus enum with states: PENDING, TRANSCRIBING, CLASSIFYING, POSTING, COMPLETE, FAILED
-2. [ ] Create Device enum with values: WATCH, PHONE, UNKNOWN
-3. [ ] Implement TranscriptionResult dataclass with text, duration_seconds, language, segments
-4. [ ] Implement ClassificationResult dataclass with template_name, confidence, fields, title, tags, reasoning
-5. [ ] Implement CaptureRecord dataclass with all fields from TDD §3.2
-6. [ ] Add serialization/deserialization methods for database persistence
-7. [ ] Write unit tests for model validation and serialization
+1. [x] Create ProcessingStatus enum with states: PENDING, TRANSCRIBING, CLASSIFYING, POSTING, COMPLETE, FAILED
+2. [x] Create Device enum with values: WATCH, PHONE, UNKNOWN
+3. [x] Implement TranscriptionResult dataclass with text, duration_seconds, language, segments
+4. [x] Implement ClassificationResult dataclass with template_name, confidence, fields, title, tags, reasoning
+5. [x] Implement CaptureRecord dataclass with all fields from TDD §3.2
+6. [x] Add serialization/deserialization methods for database persistence
+7. [x] Write unit tests for model validation and serialization
 
 **Acceptance Criteria:**
-- [ ] All models match TDD §3.2 specification exactly
-- [ ] Enums provide string values for database storage
-- [ ] Models serialize to/from database rows correctly
-- [ ] Optional fields handle None values gracefully
+- [x] All models match TDD §3.2 specification exactly
+- [x] Enums provide string values for database storage
+- [x] Models serialize to/from database rows correctly
+- [x] Optional fields handle None values gracefully
 
 ---
 
