@@ -168,7 +168,7 @@ Implement Python dataclasses for domain models: ProcessingStatus enum, Device en
 
 ---
 
-#### 1.4 Folder Watcher Service
+#### 1.4 Folder Watcher Service ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §4.1, PRD §6.2
 **Files Affected:**
@@ -181,26 +181,26 @@ Implement Python dataclasses for domain models: ProcessingStatus enum, Device en
 Implement folder watcher using Python watchdog library. Monitor inbox directory for new audio files, validate format, parse filename for metadata, queue for processing, and move to processing directory.
 
 **Tasks:**
-1. [ ] Create FolderWatcher class per TDD §4.1 interface
-2. [ ] Implement watchdog event handler for file creation events
-3. [ ] Add file settle delay (configurable, default 2 seconds) to wait for write completion
-4. [ ] Implement file stability check (size not changing)
-5. [ ] Create audio file validation (check magic bytes for m4a/wav/mp3)
-6. [ ] Implement filename parser: `{timestamp}_{device}.m4a` → (datetime, Device)
+1. [x] Create FolderWatcher class per TDD §4.1 interface
+2. [x] Implement watchdog event handler for file creation events
+3. [x] Add file settle delay (configurable, default 2 seconds) to wait for write completion
+4. [x] Implement file stability check (size not changing)
+5. [x] Create audio file validation (check magic bytes for m4a/wav/mp3)
+6. [x] Implement filename parser: `{timestamp}_{device}.m4a` → (datetime, Device)
    - Handle malformed filenames gracefully: use file mtime, device=UNKNOWN
-7. [ ] Move validated files from /inbox/ to /processing/
-8. [ ] Insert capture record into database with status=PENDING
-9. [ ] Emit event/callback for processor to pick up new captures
-10. [ ] Handle edge cases: partial files, permission errors, disk full
-11. [ ] Write comprehensive unit tests with temp directories
+7. [x] Move validated files from /inbox/ to /processing/
+8. [x] Insert capture record into database with status=PENDING
+9. [x] Emit event/callback for processor to pick up new captures
+10. [x] Handle edge cases: partial files, permission errors, disk full
+11. [x] Write comprehensive unit tests with temp directories
 
 **Acceptance Criteria:**
-- [ ] New files detected within 1 second of completion
-- [ ] Invalid audio files moved to /failed/ with log entry
-- [ ] Filename parsing extracts timestamp and device correctly
-- [ ] Malformed filenames processed with fallback values (never lost)
-- [ ] File moves are atomic where possible
-- [ ] Watcher recovers from transient errors
+- [x] New files detected within 1 second of completion
+- [x] Invalid audio files moved to /failed/ with log entry
+- [x] Filename parsing extracts timestamp and device correctly
+- [x] Malformed filenames processed with fallback values (never lost)
+- [x] File moves are atomic where possible
+- [x] Watcher recovers from transient errors
 
 **Notes:**
 Use Observer pattern from watchdog. Test with actual audio file magic bytes, not just extensions.

@@ -69,3 +69,20 @@ Implemented SQLite database layer with aiosqlite for async operations. Created s
 
 **Summary:**
 Implemented Python dataclasses for domain models: ProcessingStatus enum, Device enum, TranscriptionResult, ClassificationResult, and CaptureRecord. These models serve as the contract between pipeline components with serialization/deserialization methods for database persistence.
+
+---
+
+## 2026-01-20
+
+### Work Item 1.4: Folder Watcher Service
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/watcher/__init__.py`
+- `src/watcher/file_validator.py`
+- `src/watcher/watcher.py`
+- `tests/test_watcher.py`
+
+**Summary:**
+Implemented folder watcher service using Python watchdog library. Monitors inbox directory for new audio files, validates format via magic bytes, parses filenames for metadata (timestamp, device), queues for processing, and moves files to processing directory. Includes comprehensive unit tests with temp directories.
