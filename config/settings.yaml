@@ -1,0 +1,73 @@
+# Voice Capture Pipeline - Application Settings
+# Environment variables override these defaults
+# Format: ${ENV_VAR_NAME:default_value}
+
+# Path Configuration
+# Note: In Docker, these map to container paths
+paths:
+  inbox: /app/inbox
+  processing: /app/processing
+  failed: /app/failed
+  database: /app/data/voice_capture.db
+  logs: /app/logs
+  templates: ./config/templates
+
+# Logging Configuration
+logging:
+  level: INFO
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+# Transcription Service Configuration
+transcription:
+  # Backend: whisper_api (OpenAI) or local_whisper (future)
+  backend: whisper_api
+  model: whisper-1
+  timeout_seconds: 120
+
+# Classification Service Configuration
+classification:
+  # Claude model for classification
+  model: claude-sonnet-4-20250514
+  # Confidence threshold for template selection (0.0-1.0)
+  # Below this threshold, captures use the 'general' template
+  confidence_threshold: 0.7
+  # Maximum tokens for classification response
+  max_tokens: 2048
+
+# Pipeline Processing Configuration
+pipeline:
+  # Maximum retry attempts for failed operations
+  max_retries: 3
+  # Exponential backoff configuration
+  base_backoff_seconds: 5.0
+  max_backoff_seconds: 300.0  # 5 minutes
+  # Delay to wait for file write completion before processing
+  file_settle_delay_seconds: 2.0
+
+# Folder Watcher Configuration
+watcher:
+  # Valid audio file extensions to process
+  valid_extensions:
+    - .m4a
+    - .wav
+    - .mp3
+  # Polling interval for watcher events
+  polling_interval_seconds: 1.0
+
+# Health Check Configuration
+health_check:
+  # Cron schedule for daily health check (9 PM default)
+  schedule: "0 21 * * *"
+  # Alert if failure rate exceeds this threshold
+  failure_rate_threshold: 0.2
+  # Alert if queue depth exceeds this threshold
+  queue_backup_threshold: 10
+
+# Audio File Constraints
+audio:
+  # Maximum file size in MB
+  max_size_mb: 100
+  # Maximum duration in seconds (1 hour)
+  max_duration_seconds: 3600

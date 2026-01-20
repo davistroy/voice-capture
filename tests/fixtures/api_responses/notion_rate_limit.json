@@ -1,0 +1,7 @@
+{
+  "object": "error",
+  "status": 429,
+  "code": "rate_limited",
+  "message": "Rate limited. Please try again in 1 second.",
+  "request_id": "request-id-here"
+}

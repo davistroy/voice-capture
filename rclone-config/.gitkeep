@@ -1,0 +1,11 @@
+# rclone Configuration Directory
+#
+# Place your rclone.conf file here after running rclone config.
+# The config file contains OAuth tokens - NEVER commit it to git.
+#
+# Setup:
+# 1. Run: rclone config
+# 2. Create a remote named 'gdrive' for Google Drive
+# 3. Copy the resulting rclone.conf to this directory
+#
+# See scripts/rclone/setup.sh for detailed instructions.
