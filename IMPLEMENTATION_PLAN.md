@@ -94,7 +94,7 @@ Use Pydantic v2 for settings validation. Environment variables override YAML def
 
 ---
 
-#### 1.2 SQLite Database Layer
+#### 1.2 SQLite Database Layer ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §3.1, PRD §6.2
 **Files Affected:**
@@ -108,9 +108,9 @@ Use Pydantic v2 for settings validation. Environment variables override YAML def
 Implement SQLite database with aiosqlite for async operations. Create schema for captures, failure_log, and daily_stats tables. Implement CRUD operations with proper transaction handling.
 
 **Tasks:**
-1. [ ] Create database.py with async connection pool management
-2. [ ] Implement schema creation script matching TDD §3.1 exactly
-3. [ ] Create Database class with methods for:
+1. [x] Create database.py with async connection pool management
+2. [x] Implement schema creation script matching TDD §3.1 exactly
+3. [x] Create Database class with methods for:
    - `insert_capture(filename, original_path, device, captured_at)`
    - `update_status(capture_id, status, error=None)`
    - `get_pending_captures()`
@@ -123,15 +123,15 @@ Implement SQLite database with aiosqlite for async operations. Create schema for
    - `mark_complete(capture_id)`
    - `get_daily_stats(date)`
    - `update_daily_stats(date, stats)`
-4. [ ] Implement CLI command for database initialization: `python -m src.db.init`
-5. [ ] Write unit tests for all CRUD operations
+4. [x] Implement CLI command for database initialization: `python -m src.db.init`
+5. [x] Write unit tests for all CRUD operations
 
 **Acceptance Criteria:**
-- [ ] All three tables created with correct schema and indexes
-- [ ] Async operations work correctly under load
-- [ ] Status transitions follow state machine rules
-- [ ] retry_count increments correctly on failure
-- [ ] Database survives container restart (volume mount)
+- [x] All three tables created with correct schema and indexes
+- [x] Async operations work correctly under load
+- [x] Status transitions follow state machine rules
+- [x] retry_count increments correctly on failure
+- [x] Database survives container restart (volume mount)
 
 **Notes:**
 Use `aiosqlite` for async operations. JSON fields stored as TEXT with json.dumps/loads.
