@@ -188,3 +188,22 @@ Enhanced rclone sync configuration scripts for Google Drive integration. Created
 
 **Summary:**
 Implemented YAML-based template configuration system for the classification pipeline. Created TemplateConfig and FieldConfig dataclasses per TDD specification, TemplateLoader class for loading and validating template YAML files from config/templates/, environment variable interpolation support, and comprehensive unit tests for loader and validation logic.
+
+---
+
+## 2026-01-20
+
+### Work Item 2.2: Template Definitions (All 6 Templates)
+
+**Status:** Complete
+
+**Files Changed:**
+- `config/templates/journal.yaml`
+- `config/templates/task.yaml`
+- `config/templates/idea.yaml`
+- `config/templates/research.yaml`
+- `config/templates/product.yaml`
+- `config/templates/general.yaml`
+
+**Summary:**
+Created YAML configuration files for all six content templates. Each template defines trigger patterns, semantic indicators, field extraction rules, and Notion property mappings per PRD specifications. Templates include journal (personal reflections), task (action items), idea (speculative concepts), research (topics to explore), product (features/bugs), and general (fallback). All templates validated against schema with comprehensive page_body_template definitions.

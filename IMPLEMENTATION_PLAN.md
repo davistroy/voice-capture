@@ -489,7 +489,7 @@ Implement YAML-based template configuration system. Templates define triggers, f
 
 ---
 
-#### 2.2 Template Definitions (All 6 Templates)
+#### 2.2 Template Definitions (All 6 Templates) ✅ Completed 2026-01-20
 
 **Requirement Refs:** PRD §7.1-7.6, TDD §3.3
 **Files Affected:**
@@ -504,31 +504,31 @@ Implement YAML-based template configuration system. Templates define triggers, f
 Create YAML configuration files for all six templates. Each defines trigger patterns, semantic indicators, field extraction rules, and Notion property mappings.
 
 **Tasks:**
-1. [ ] Create journal.yaml per PRD §7.1:
+1. [x] Create journal.yaml per PRD §7.1:
    - Triggers: first-person narrative, feelings, reflections
    - Fields: Title, Date, Mood (5 options), Summary, Full Entry, People Mentioned, Tags
-2. [ ] Create task.yaml per PRD §7.2 and TDD example:
+2. [x] Create task.yaml per PRD §7.2 and TDD example:
    - Triggers: "I need to", "remind me", imperative statements
    - Fields: Task (title), Date Created, Due Date, Priority, Context, Status, Tags
-3. [ ] Create idea.yaml per PRD §7.3:
+3. [x] Create idea.yaml per PRD §7.3:
    - Triggers: "what if", "idea:", speculative language
    - Fields: Title, Date, Core Concept, Elaboration, Potential Value, Next Steps, Tags
-4. [ ] Create research.yaml per PRD §7.4:
+4. [x] Create research.yaml per PRD §7.4:
    - Triggers: "learn about", "research", inquiry language
    - Fields: Title, Date, Question/Topic, Why It Matters, Initial Thoughts, Sources, Status, Tags
-5. [ ] Create product.yaml per PRD §7.5:
+5. [x] Create product.yaml per PRD §7.5:
    - Triggers: "feature", "bug", product-specific mentions
    - Fields: Title, Date, Product/Project, Type (5 options), Description, User Impact, Implementation Notes, Priority, Tags
-6. [ ] Create general.yaml per PRD §7.6:
+6. [x] Create general.yaml per PRD §7.6:
    - Always enabled as fallback
    - Fields: Title, Date, Duration, Device, Summary, Suggested Template, Tags
 
 **Acceptance Criteria:**
-- [ ] All templates validate against schema
-- [ ] Trigger patterns cover PRD examples
-- [ ] Field types match Notion property types
-- [ ] All templates include page_body_template
-- [ ] Templates are self-documenting
+- [x] All templates validate against schema
+- [x] Trigger patterns cover PRD examples
+- [x] Field types match Notion property types
+- [x] All templates include page_body_template
+- [x] Templates are self-documenting
 
 ---
 

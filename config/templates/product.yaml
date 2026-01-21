@@ -1,0 +1,182 @@
+# Template: Product
+# =================
+#
+# Features, bugs, enhancements for things being built.
+# Product-specific mentions, UI/UX observations, technical implementation notes.
+#
+# PRD Reference: Section 7.5
+
+name: product
+display_name: Product
+description: |
+  Features, bugs, enhancements for products being built.
+  Use for capturing product-specific ideas, bug reports, UI/UX observations,
+  and technical implementation notes for active projects.
+enabled: true
+
+triggers:
+  patterns:
+    - "feature idea"
+    - "feature:"
+    - "bug in"
+    - "bug:"
+    - "the app should"
+    - "user feedback"
+    - "enhancement"
+    - "improvement"
+    - "UX issue"
+    - "UI problem"
+    - "technical debt"
+    - "refactor"
+    - "the product"
+    - "for the app"
+    - "we should add"
+    - "users are"
+    - "customers want"
+
+  indicators:
+    - product-specific mentions
+    - feature requests or ideas
+    - bug reports or issues
+    - UI/UX observations
+    - technical implementation notes
+    - user feedback references
+    - product roadmap thinking
+    - enhancement suggestions
+
+fields:
+  - name: title
+    type: title
+    description: Feature or issue name
+    extraction: |
+      Generate a clear, concise title for the feature or issue.
+      Format: "[Type]: [Brief description]"
+      Examples: "Feature: Dark mode toggle", "Bug: Login timeout", "Enhancement: Faster search"
+    required: true
+    notion_property: Title
+
+  - name: date
+    type: date
+    description: Capture timestamp
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date
+
+  - name: product_project
+    type: rich_text
+    description: Which product or project this relates to
+    extraction: |
+      Extract the product or project name this relates to.
+      If not explicitly mentioned, infer from context if possible.
+      Leave generic like "Current project" if unclear.
+    required: false
+    notion_property: Product/Project
+
+  - name: type
+    type: select
+    description: Type of product item
+    extraction: |
+      Classify the type of product item:
+      - Feature: new functionality, capability, or major addition
+      - Bug: something broken, not working as expected, error
+      - Enhancement: improvement to existing functionality
+      - UX: user experience issue, usability concern, design feedback
+      - Technical Debt: code quality, refactoring need, maintenance
+      Default to Enhancement if unclear.
+    required: false
+    default: Enhancement
+    options:
+      - Feature
+      - Bug
+      - Enhancement
+      - UX
+      - Technical Debt
+    notion_property: Type
+
+  - name: description
+    type: rich_text
+    description: What it is, what it should do
+    extraction: |
+      Describe what the feature/bug/enhancement is.
+      For features: what it should do, expected behavior
+      For bugs: what's happening, expected vs actual behavior
+      For enhancements: what should improve, current state vs desired
+    required: true
+    notion_property: Description
+
+  - name: user_impact
+    type: rich_text
+    description: Why this matters, who it affects
+    extraction: |
+      Extract the user impact or business value.
+      Include: who is affected, how significant the impact is,
+      frequency of the issue, potential benefit of addressing it.
+      Leave empty if not mentioned.
+    required: false
+    notion_property: User Impact
+
+  - name: implementation_notes
+    type: rich_text
+    description: Technical considerations mentioned
+    extraction: |
+      Extract any technical implementation details mentioned.
+      Include: approach ideas, potential challenges, dependencies,
+      related code areas, technical constraints.
+      Leave empty if no technical details mentioned.
+    required: false
+    notion_property: Implementation Notes
+
+  - name: priority
+    type: select
+    description: Priority level
+    extraction: |
+      Assess priority based on impact and urgency described.
+      - High: critical bug, blocking issue, key feature, significant user impact
+      - Medium: important improvement, moderate impact, standard feature
+      - Low: nice-to-have, minor improvement, polish item
+      Default to Medium if unclear.
+    required: false
+    default: Medium
+    options:
+      - High
+      - Medium
+      - Low
+    notion_property: Priority
+
+  - name: tags
+    type: multi_select
+    description: Topic tags for organization
+    extraction: |
+      Generate 2-5 relevant topic tags based on content.
+      Include: component area (frontend, backend, API), user type,
+      feature area, sprint/milestone, technology involved.
+    required: false
+    notion_property: Tags
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Description
+  {{ description | default("No description provided.") }}
+
+  {% if product_project %}
+  ## Product/Project
+  {{ product_project }}
+  {% endif %}
+
+  {% if user_impact %}
+  ## User Impact
+  {{ user_impact }}
+  {% endif %}
+
+  {% if implementation_notes %}
+  ## Implementation Notes
+  {{ implementation_notes }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*
