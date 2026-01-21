@@ -104,3 +104,20 @@ Implemented folder watcher service using Python watchdog library. Monitors inbox
 
 **Summary:**
 Implemented transcription service with abstract backend interface (Strategy pattern) and OpenAI Whisper API implementation. Includes retry logic with exponential backoff and jitter, proper error handling for different failure modes (timeout, rate limit, invalid audio, server errors), and comprehensive unit tests with mocked API client.
+
+---
+
+## 2026-01-20
+
+### Work Item 1.6: Notion Integration Service (Basic)
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/notion/__init__.py`
+- `src/notion/client.py`
+- `src/notion/page_builder.py`
+- `tests/test_notion.py`
+
+**Summary:**
+Implemented Notion API integration for creating pages in the Voice Captures database. Includes NotionService class with create_capture_page() method, page body builder with summary and raw transcript sections, transcript truncation at 2000 chars, retry logic with exponential backoff, rate limiting support via Retry-After header, and comprehensive unit tests with mocked Notion client.

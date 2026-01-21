@@ -254,7 +254,7 @@ Use openai SDK >=1.0. Skip confidence tracking per TDD decision—Whisper is acc
 
 ---
 
-#### 1.6 Notion Integration Service (Basic)
+#### 1.6 Notion Integration Service (Basic) ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §4.4, PRD §6.5
 **Files Affected:**
@@ -269,14 +269,14 @@ Use openai SDK >=1.0. Skip confidence tracking per TDD decision—Whisper is acc
 Implement Notion API integration for creating pages in the Voice Captures database. For Phase 1, use generic template only. Build page with title, date, device, transcript. Handle retry and rate limiting.
 
 **Tasks:**
-1. [ ] Create NotionService class per TDD §4.4 interface
-2. [ ] Implement `create_capture_page()` for generic template:
+1. [x] Create NotionService class per TDD §4.4 interface
+2. [x] Implement `create_capture_page()` for generic template:
    - Title property: auto-generated from first sentence
    - Date property: capture timestamp
    - Device property: Watch/Phone select
    - Type property: "General" select
    - Tags property: empty multi_select
-3. [ ] Build page body with structure:
+3. [x] Build page body with structure:
    ```markdown
    ## Summary
    {First 2-3 sentences or LLM summary}
@@ -287,18 +287,18 @@ Implement Notion API integration for creating pages in the Voice Captures databa
    ---
    *Processed: {timestamp} | Device: {device} | Duration: {duration}s*
    ```
-4. [ ] Implement transcript truncation at 2000 chars with "..." indicator
-5. [ ] Add retry logic: 3x with exponential backoff
-6. [ ] Handle rate limiting (HTTP 429) with Retry-After header
-7. [ ] Return NotionPage with id and url on success
-8. [ ] Write unit tests with mocked Notion client
+4. [x] Implement transcript truncation at 2000 chars with "..." indicator
+5. [x] Add retry logic: 3x with exponential backoff
+6. [x] Handle rate limiting (HTTP 429) with Retry-After header
+7. [x] Return NotionPage with id and url on success
+8. [x] Write unit tests with mocked Notion client
 
 **Acceptance Criteria:**
-- [ ] Pages created with correct properties and body structure
-- [ ] Long transcripts truncated gracefully
-- [ ] Rate limits respected without failure
-- [ ] Page URL returned for verification
-- [ ] Retry logic handles transient failures
+- [x] Pages created with correct properties and body structure
+- [x] Long transcripts truncated gracefully
+- [x] Rate limits respected without failure
+- [x] Page URL returned for verification
+- [x] Retry logic handles transient failures
 
 **Notes:**
 Use notion-client SDK >=2.0. Phase 2 will add template-specific property mapping.
