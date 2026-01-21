@@ -449,7 +449,7 @@ rclone config file created outside Docker, mounted read-only into container.
 
 ### Work Items
 
-#### 2.1 Template Configuration System
+#### 2.1 Template Configuration System ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §3.3, PRD §7.8
 **Files Affected:**
@@ -463,29 +463,29 @@ rclone config file created outside Docker, mounted read-only into container.
 Implement YAML-based template configuration system. Templates define triggers, fields, Notion mappings, and page body templates. Loader validates schema and provides runtime access to template definitions.
 
 **Tasks:**
-1. [ ] Define TemplateConfig dataclass per TDD §3.3 schema:
+1. [x] Define TemplateConfig dataclass per TDD §3.3 schema:
    - name, display_name, description, enabled
    - TriggersConfig with patterns and indicators
    - List[FieldConfig] with all field properties
    - notion_database_id (with env var interpolation)
    - page_body_template (Jinja2 template string)
-2. [ ] Create FieldConfig dataclass:
+2. [x] Create FieldConfig dataclass:
    - name, type, description, extraction, required, default, options, notion_property
-3. [ ] Implement TemplateLoader class:
+3. [x] Implement TemplateLoader class:
    - `load_all()` - load all YAML files from config/templates/
    - `get_template(name)` - get specific template
    - `get_enabled_templates()` - get all enabled templates
    - `build_classification_prompt_context()` - generate prompt section
-4. [ ] Add YAML schema validation with helpful error messages
-5. [ ] Create _template.yaml as template for new templates
-6. [ ] Write unit tests for loader and validation
+4. [x] Add YAML schema validation with helpful error messages
+5. [x] Create _template.yaml as template for new templates
+6. [x] Write unit tests for loader and validation
 
 **Acceptance Criteria:**
-- [ ] All YAML templates load without error
-- [ ] Invalid templates produce clear error messages
-- [ ] Environment variable interpolation works (${VAR})
-- [ ] Disabled templates excluded from classification
-- [ ] Adding new template requires no code changes
+- [x] All YAML templates load without error
+- [x] Invalid templates produce clear error messages
+- [x] Environment variable interpolation works (${VAR})
+- [x] Disabled templates excluded from classification
+- [x] Adding new template requires no code changes
 
 ---
 
