@@ -51,6 +51,7 @@ from src.transcription.base import TranscriptionError, InvalidAudioError
 
 if TYPE_CHECKING:
     from src.classification import ClassificationService, TemplateLoader
+    from src.notifications.pushover import PushoverService
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,12 @@ class PipelineOrchestrator:
     - Uses ClassificationService to determine template and extract fields
     - Passes classification result and template to Notion for property mapping
 
+    Notification integration (Phase 3+):
+    - Sends failure notifications via Pushover after max retries exhausted
+    - Includes filename, error message, and pipeline stage in notification
+    - Includes Notion page URL if available (for partial failures)
+    - Notifications are best-effort; failures don't affect processing
+
     Args:
         db: Database instance for state management.
         transcription: Transcription service instance.
@@ -128,6 +135,7 @@ class PipelineOrchestrator:
         failed_path: Directory for failed files.
         classification: Optional classification service (Phase 2+).
         template_loader: Optional template loader for accessing templates (Phase 2+).
+        notifications: Optional notification service (Phase 3+).
     """
 
     def __init__(
@@ -139,6 +147,7 @@ class PipelineOrchestrator:
         failed_path: Optional[Path] = None,
         classification: Optional["ClassificationService"] = None,
         template_loader: Optional["TemplateLoader"] = None,
+        notifications: Optional["PushoverService"] = None,
     ):
         self._db = db
         self._transcription = transcription
@@ -147,6 +156,10 @@ class PipelineOrchestrator:
         self._failed_path = failed_path or Path("/app/failed")
         self._classification = classification  # None in Phase 1
         self._template_loader = template_loader  # None in Phase 1
+        self._notifications = notifications  # None if notifications disabled
+
+        # Track notified failures to prevent duplicate notifications
+        self._notified_failures: set[int] = set()
 
         # Initialize circuit breaker if configured
         self._circuit_breaker: Optional[CircuitBreaker] = None
@@ -648,6 +661,13 @@ class PipelineOrchestrator:
                 f"{classification.error_type}: {classification.message}"
             )
 
+            # Send failure notification (Phase 3+)
+            await self._send_failure_notification(
+                capture=capture,
+                stage=stage,
+                error_message=classification.message,
+            )
+
         return await self._db.get_capture_by_id(capture_id)
 
     async def _move_to_failed(self, capture: CaptureRow) -> None:
@@ -673,6 +693,59 @@ class PipelineOrchestrator:
             logger.info(f"Moved failed file to: {dest_path}")
         except Exception as e:
             logger.error(f"Failed to move file to {dest_path}: {e}")
+
+    async def _send_failure_notification(
+        self,
+        capture: CaptureRow,
+        stage: ProcessingStage,
+        error_message: str,
+    ) -> None:
+        """Send a failure notification via Pushover.
+
+        Sends notification after max retries exhausted or non-retryable error.
+        Includes relevant context: filename, error message, stage.
+        Includes Notion page URL if available (for partial failures).
+
+        Notifications are best-effort; failures don't affect pipeline operation.
+        Tracks notified failures to prevent duplicate notifications for the same
+        capture ID.
+
+        Args:
+            capture: The capture that failed.
+            stage: The pipeline stage where failure occurred.
+            error_message: The error message to include in notification.
+        """
+        if not self._notifications:
+            logger.debug(f"Notifications not configured, skipping failure notification for capture {capture.id}")
+            return
+
+        # Prevent duplicate notifications for the same failure
+        if capture.id in self._notified_failures:
+            logger.debug(f"Already notified for capture {capture.id}, skipping duplicate notification")
+            return
+
+        try:
+            # Include Notion page URL if available (for partial failures where
+            # page was created but something else failed)
+            notion_page_url = capture.notion_page_url
+
+            success = await self._notifications.notify_processing_failure(
+                filename=capture.filename,
+                error_message=error_message,
+                stage=stage.value,
+                notion_page_url=notion_page_url,
+            )
+
+            if success:
+                # Track that we've notified for this capture
+                self._notified_failures.add(capture.id)
+                logger.info(f"Sent failure notification for capture {capture.id}")
+            else:
+                logger.warning(f"Failed to send notification for capture {capture.id}")
+
+        except Exception as e:
+            # Notification failures should not affect pipeline operation
+            logger.error(f"Error sending failure notification for capture {capture.id}: {e}")
 
     async def _delete_source_file(self, capture: CaptureRow) -> None:
         """Delete the source audio file after successful processing.
@@ -857,6 +930,9 @@ class PipelineOrchestrator:
         # Reset capture status (error cleared, but don't reset retry_count for manual retries)
         await self._db.update_status(capture_id, target_status, error=None)
 
+        # Clear notification tracking to allow re-notification if retry fails
+        self.clear_notification_tracking(capture_id)
+
         # If file was moved to failed directory, we need to move it back
         if capture.current_path and self._failed_path in Path(capture.current_path).parents:
             logger.info(f"Note: File is in failed directory, manual file move may be required")
@@ -883,3 +959,19 @@ class PipelineOrchestrator:
         if self._circuit_breaker:
             self._circuit_breaker.reset()
             logger.info("Circuit breaker manually reset to closed state")
+
+    def clear_notification_tracking(self, capture_id: Optional[int] = None) -> None:
+        """Clear the notified failures tracking.
+
+        Useful for manual retries where we want to allow re-notification
+        if the retry also fails.
+
+        Args:
+            capture_id: Specific capture ID to clear. If None, clears all.
+        """
+        if capture_id is not None:
+            self._notified_failures.discard(capture_id)
+            logger.debug(f"Cleared notification tracking for capture {capture_id}")
+        else:
+            self._notified_failures.clear()
+            logger.debug("Cleared all notification tracking")

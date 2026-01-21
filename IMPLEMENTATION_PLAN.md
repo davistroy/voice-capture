@@ -842,7 +842,7 @@ Create CLI commands for manual intervention: retry failed captures, reset captur
 
 ---
 
-#### 3.5 Pipeline Integration (Notifications)
+#### 3.5 Pipeline Integration (Notifications) ✅ Completed 2026-01-21
 
 **Requirement Refs:** TDD §4.5
 **Files Affected:**
@@ -852,16 +852,16 @@ Create CLI commands for manual intervention: retry failed captures, reset captur
 Integrate notification service into pipeline orchestrator. Send notifications on failures after max retries.
 
 **Tasks:**
-1. [ ] Add NotificationService to orchestrator dependencies
-2. [ ] Send failure notification after max retries exhausted
-3. [ ] Include relevant context in notification (filename, error, stage)
-4. [ ] Add Notion page URL to notification when available
-5. [ ] Test notification integration
+1. [x] Add NotificationService to orchestrator dependencies
+2. [x] Send failure notification after max retries exhausted
+3. [x] Include relevant context in notification (filename, error, stage)
+4. [x] Add Notion page URL to notification when available
+5. [x] Test notification integration
 
 **Acceptance Criteria:**
-- [ ] Failure notifications sent after max retries
-- [ ] Notifications include actionable information
-- [ ] No duplicate notifications for same failure
+- [x] Failure notifications sent after max retries
+- [x] Notifications include actionable information
+- [x] No duplicate notifications for same failure
 
 ---
 

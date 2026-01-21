@@ -327,3 +327,18 @@ Hardened retry logic across all services with consistent backoff behavior, prope
 
 **Summary:**
 Implemented CLI commands for manual intervention in the voice capture pipeline. Created retry.py for retrying failed captures (single or batch with --all-failed, with optional --from-stage for resuming from a specific pipeline stage), reset_capture.py for moving files back to inbox and clearing failed status, and queue_status.py for viewing pending/processing/failed counts with detailed error messages for failed items. All commands include confirmation prompts for destructive operations and helpful --help output.
+
+---
+
+## 2026-01-20
+
+### Work Item 3.5: Pipeline Integration (Notifications)
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/pipeline/orchestrator.py`
+- `tests/test_pipeline.py`
+
+**Summary:**
+Integrated notification service into the pipeline orchestrator. Added NotificationService as an orchestrator dependency, implemented failure notifications after max retries are exhausted with relevant context (filename, error, stage), included Notion page URL in notifications when available, and ensured no duplicate notifications for the same failure. Comprehensive tests validate notification integration.

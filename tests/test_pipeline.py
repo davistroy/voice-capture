@@ -891,3 +891,333 @@ class TestOrchestratorDeviceFormatting:
         assert orchestrator._format_device("tablet") == "Unknown"
         assert orchestrator._format_device(None) == "Unknown"
         assert orchestrator._format_device("") == "Unknown"
+
+
+# =============================================================================
+# Notification Integration Tests
+# =============================================================================
+
+
+@pytest.fixture
+def mock_notifications():
+    """Create a mock notification service."""
+    service = MagicMock()
+    service.notify_processing_failure = AsyncMock(return_value=True)
+    service.send_daily_summary = AsyncMock(return_value=True)
+    service.notify_high_failure_rate = AsyncMock(return_value=True)
+    service.notify_queue_backup = AsyncMock(return_value=True)
+    return service
+
+
+@pytest.fixture
+def orchestrator_with_notifications(
+    mock_db, mock_transcription, mock_notion, mock_notifications, temp_dir
+):
+    """Create a pipeline orchestrator with notification service."""
+    return PipelineOrchestrator(
+        db=mock_db,
+        transcription=mock_transcription,
+        notion=mock_notion,
+        retry_config=RetryConfig(
+            max_retries=3,
+            base_backoff_seconds=0.01,  # Fast for tests
+        ),
+        failed_path=temp_dir / "failed",
+        notifications=mock_notifications,
+    )
+
+
+class TestOrchestratorNotifications:
+    """Tests for notification integration in pipeline orchestrator."""
+
+    @pytest.mark.asyncio
+    async def test_notification_sent_after_max_retries(
+        self,
+        orchestrator_with_notifications,
+        mock_db,
+        mock_transcription,
+        mock_notifications,
+        sample_capture,
+    ):
+        """Verify failure notification is sent after max retries exhausted."""
+        sample_capture.status = "pending"
+        sample_capture.retry_count = 3  # At max retries
+
+        async def update_status_and_track(cid, status, **kwargs):
+            sample_capture.status = status
+            if kwargs.get("error"):
+                sample_capture.last_error = kwargs["error"]
+            return True
+
+        mock_db.update_status = AsyncMock(side_effect=update_status_and_track)
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail transcription with retryable error
+        mock_transcription.transcribe = AsyncMock(
+            side_effect=TranscriptionError("Timeout", retryable=True)
+        )
+
+        await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        # Verify notification was sent
+        mock_notifications.notify_processing_failure.assert_called_once()
+        call_args = mock_notifications.notify_processing_failure.call_args
+
+        assert call_args.kwargs["filename"] == sample_capture.filename
+        assert call_args.kwargs["stage"] == "transcribing"
+        assert "Timeout" in call_args.kwargs["error_message"]
+
+    @pytest.mark.asyncio
+    async def test_notification_sent_for_non_retryable_error(
+        self,
+        orchestrator_with_notifications,
+        mock_db,
+        mock_transcription,
+        mock_notifications,
+        sample_capture,
+    ):
+        """Verify failure notification is sent for non-retryable errors."""
+        sample_capture.status = "pending"
+        sample_capture.retry_count = 0
+
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail with non-retryable InvalidAudioError
+        mock_transcription.transcribe = AsyncMock(
+            side_effect=InvalidAudioError("Invalid format")
+        )
+
+        await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        # Verify notification was sent
+        mock_notifications.notify_processing_failure.assert_called_once()
+        call_args = mock_notifications.notify_processing_failure.call_args
+
+        assert call_args.kwargs["filename"] == sample_capture.filename
+        assert call_args.kwargs["stage"] == "transcribing"
+
+    @pytest.mark.asyncio
+    async def test_no_notification_when_retries_remain(
+        self,
+        orchestrator_with_notifications,
+        mock_db,
+        mock_transcription,
+        mock_notifications,
+        sample_capture,
+    ):
+        """Verify no notification is sent when retries are still available."""
+        sample_capture.status = "pending"
+        sample_capture.retry_count = 0  # Retries available
+
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail with retryable error
+        mock_transcription.transcribe = AsyncMock(
+            side_effect=TranscriptionError("Timeout", retryable=True)
+        )
+
+        await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        # Verify no notification was sent
+        mock_notifications.notify_processing_failure.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_duplicate_notifications_for_same_failure(
+        self,
+        orchestrator_with_notifications,
+        mock_db,
+        mock_transcription,
+        mock_notifications,
+        sample_capture,
+    ):
+        """Verify duplicate notifications are prevented for the same capture."""
+        sample_capture.status = "pending"
+        sample_capture.retry_count = 3  # At max retries
+
+        async def update_status_and_track(cid, status, **kwargs):
+            sample_capture.status = status
+            return True
+
+        mock_db.update_status = AsyncMock(side_effect=update_status_and_track)
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail transcription
+        mock_transcription.transcribe = AsyncMock(
+            side_effect=TranscriptionError("Timeout", retryable=True)
+        )
+
+        # Process twice (simulating somehow hitting the failure path twice)
+        await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        # Reset status and process again to try to trigger second notification
+        sample_capture.status = "pending"
+        await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        # Should only have been called once due to duplicate prevention
+        assert mock_notifications.notify_processing_failure.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_notification_includes_notion_url_when_available(
+        self,
+        orchestrator_with_notifications,
+        mock_db,
+        mock_transcription,
+        mock_notion,
+        mock_notifications,
+        sample_capture,
+    ):
+        """Verify Notion page URL is included in notification when available."""
+        # Set up capture that failed after posting (has Notion URL)
+        sample_capture.status = "posting"
+        sample_capture.transcript = "Test transcript"
+        sample_capture.transcript_duration_seconds = 10.0
+        sample_capture.transcript_language = "english"
+        sample_capture.retry_count = 3  # At max retries
+        sample_capture.notion_page_url = "https://notion.so/test-page-123"
+
+        async def update_status_and_track(cid, status, **kwargs):
+            sample_capture.status = status
+            return True
+
+        mock_db.update_status = AsyncMock(side_effect=update_status_and_track)
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail Notion posting
+        mock_notion.create_capture_page = AsyncMock(
+            side_effect=NotionError("Rate limited")
+        )
+        orchestrator_with_notifications._notion = mock_notion
+
+        await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        # Verify notification includes Notion URL
+        mock_notifications.notify_processing_failure.assert_called_once()
+        call_args = mock_notifications.notify_processing_failure.call_args
+
+        assert call_args.kwargs["notion_page_url"] == "https://notion.so/test-page-123"
+
+    @pytest.mark.asyncio
+    async def test_no_notification_when_service_not_configured(
+        self,
+        orchestrator,  # Uses the regular orchestrator without notifications
+        mock_db,
+        mock_transcription,
+        sample_capture,
+    ):
+        """Verify no errors when notification service is not configured."""
+        sample_capture.status = "pending"
+        sample_capture.retry_count = 3  # At max retries
+
+        async def update_status_and_track(cid, status, **kwargs):
+            sample_capture.status = status
+            return True
+
+        mock_db.update_status = AsyncMock(side_effect=update_status_and_track)
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail transcription
+        mock_transcription.transcribe = AsyncMock(
+            side_effect=TranscriptionError("Timeout", retryable=True)
+        )
+
+        # Should not raise even without notification service
+        result = await orchestrator.process_capture(sample_capture.id)
+
+        assert result.success is False
+
+    @pytest.mark.asyncio
+    async def test_notification_failure_does_not_affect_pipeline(
+        self,
+        orchestrator_with_notifications,
+        mock_db,
+        mock_transcription,
+        mock_notifications,
+        sample_capture,
+    ):
+        """Verify notification failures don't affect pipeline operation."""
+        sample_capture.status = "pending"
+        sample_capture.retry_count = 3  # At max retries
+
+        async def update_status_and_track(cid, status, **kwargs):
+            sample_capture.status = status
+            return True
+
+        mock_db.update_status = AsyncMock(side_effect=update_status_and_track)
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail transcription
+        mock_transcription.transcribe = AsyncMock(
+            side_effect=TranscriptionError("Timeout", retryable=True)
+        )
+
+        # Make notification service fail
+        mock_notifications.notify_processing_failure = AsyncMock(
+            side_effect=Exception("Notification service unavailable")
+        )
+
+        # Should not raise despite notification failure
+        result = await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        assert result.success is False
+        assert result.stage == "transcribing"
+
+    @pytest.mark.asyncio
+    async def test_retry_failed_clears_notification_tracking(
+        self,
+        orchestrator_with_notifications,
+        mock_db,
+        mock_transcription,
+        mock_notion,
+        mock_notifications,
+        sample_capture,
+        temp_dir,
+    ):
+        """Verify retry_failed clears notification tracking for re-notification."""
+        # First, cause a failure and notification
+        sample_capture.status = "pending"
+        sample_capture.retry_count = 3  # At max retries
+
+        async def update_status_and_track(cid, status, **kwargs):
+            sample_capture.status = status
+            return True
+
+        mock_db.update_status = AsyncMock(side_effect=update_status_and_track)
+        mock_db.get_capture_by_id = AsyncMock(return_value=sample_capture)
+
+        # Fail transcription
+        mock_transcription.transcribe = AsyncMock(
+            side_effect=TranscriptionError("Timeout", retryable=True)
+        )
+
+        await orchestrator_with_notifications.process_capture(sample_capture.id)
+
+        # Verify first notification sent
+        assert mock_notifications.notify_processing_failure.call_count == 1
+
+        # Now retry the capture
+        sample_capture.status = "failed"
+        mock_notifications.notify_processing_failure.reset_mock()
+
+        await orchestrator_with_notifications.retry_failed(sample_capture.id)
+
+        # Should have sent another notification since tracking was cleared
+        assert mock_notifications.notify_processing_failure.call_count == 1
+
+    def test_clear_notification_tracking_specific(self, orchestrator_with_notifications):
+        """Verify clear_notification_tracking clears specific capture."""
+        orchestrator_with_notifications._notified_failures.add(1)
+        orchestrator_with_notifications._notified_failures.add(2)
+
+        orchestrator_with_notifications.clear_notification_tracking(1)
+
+        assert 1 not in orchestrator_with_notifications._notified_failures
+        assert 2 in orchestrator_with_notifications._notified_failures
+
+    def test_clear_notification_tracking_all(self, orchestrator_with_notifications):
+        """Verify clear_notification_tracking clears all when capture_id is None."""
+        orchestrator_with_notifications._notified_failures.add(1)
+        orchestrator_with_notifications._notified_failures.add(2)
+
+        orchestrator_with_notifications.clear_notification_tracking()
+
+        assert len(orchestrator_with_notifications._notified_failures) == 0
