@@ -47,14 +47,15 @@ Six content types, each with specific Notion properties (see `docs/prd.md` Secti
 
 **Extensibility:** Templates are config-driven (YAML in `config/templates/`). Adding a new template = add YAML file + Notion properties. No code changes. See PRD Section 7.8.
 
-## Implementation Phases
+## Implementation Status
 
-Build in order — each phase has exit criteria in the PRD:
+**Status:** Complete (v1.0, 2026-01-21)
 
-1. **Phase 1 (MVP)**: Basic pipeline with generic template only. Exit: Watch recording → Notion page within 5 minutes.
-2. **Phase 2**: LLM classification and all templates. Exit: >80% classification accuracy.
-3. **Phase 3**: Reliability hardening, Pushover notifications, daily health checks. Exit: No silent failures.
-4. **Phase 4**: Weekly synthesis Claude skill via Notion MCP.
+All four phases implemented:
+1. **Phase 1 (MVP)**: Core pipeline — watcher, transcription, Notion integration, orchestrator
+2. **Phase 2**: Classification — Claude Sonnet, 6 YAML templates, dynamic property mapping
+3. **Phase 3**: Reliability — Pushover notifications, health checks, retry hardening, recovery CLI
+4. **Phase 4**: Synthesis — Weekly summary generation via Claude skill
 
 ## Resolved Decisions
 
@@ -73,36 +74,66 @@ All architectural decisions have been made. See `docs/prd.md` Section 12 for the
 | Transcript storage | Page body under `## Raw Transcript` |
 | Classification threshold | 0.7 confidence |
 
-## File Structure (Planned)
+## File Structure
 
 ```
 voice-capture/
 ├── docs/
-│   └── prd.md              # Source of truth for requirements
+│   ├── prd.md              # Product Requirements Document
+│   ├── TDD.md              # Technical Design Document
+│   └── DEPLOYMENT_GUIDE.md # Deployment instructions
 ├── src/
-│   ├── watcher/            # Folder monitoring service
+│   ├── watcher/            # Folder monitoring (watchdog)
 │   ├── transcription/      # Whisper API integration
-│   ├── classification/     # LLM classification service (reads template configs)
-│   ├── notion/             # Notion API integration
-│   └── notifications/      # Pushover integration
+│   ├── classification/     # Claude classification + template loader
+│   ├── notion/             # Notion API + property mapper
+│   ├── notifications/      # Pushover integration
+│   ├── health/             # Health check system
+│   ├── synthesis/          # Weekly synthesis engine
+│   ├── pipeline/           # Orchestrator + retry logic
+│   ├── cli/                # CLI commands (verify, retry, reset, queue, health)
+│   ├── db/                 # SQLite database layer
+│   ├── models/             # Domain models
+│   ├── config/             # Pydantic settings
+│   └── main.py             # Application entry point
 ├── config/
-│   ├── templates/          # Template definitions (YAML) - add new templates here
-│   │   ├── _template.yaml  # Blank template for creating new ones
-│   │   ├── journal.yaml
-│   │   ├── task.yaml
-│   │   ├── idea.yaml
-│   │   ├── research.yaml
-│   │   ├── product.yaml
-│   │   └── general.yaml    # Fallback template
-│   └── classification.yaml # Global settings (threshold, etc.)
+│   ├── templates/          # Template definitions (6 YAML files)
+│   ├── settings.yaml       # Application configuration
+│   └── classification.yaml # Classification settings
+├── skills/
+│   └── weekly-voice-synthesis/  # Claude skill for synthesis
 ├── scripts/
-│   └── rclone/             # Sync scripts and cron setup
-└── tests/
+│   └── rclone/             # Google Drive sync scripts
+└── tests/                  # Comprehensive test suite
+```
+
+## CLI Commands
+
+```bash
+# Run the pipeline
+python -m src.main
+
+# Verify configuration
+python -m src.cli.verify_config
+
+# Check queue status
+python -m src.cli.queue_status
+
+# Retry failed captures
+python -m src.cli.retry --capture-id 42
+python -m src.cli.retry --all-failed
+
+# Reset a capture (move back to inbox)
+python -m src.cli.reset_capture --filename "filename.m4a"
+
+# Run health check
+python -m src.cli.health_check
 ```
 
 ## Development Notes
 
 - Mock Notion API and transcription service for local testing before pointing at real services
 - Test folder watcher and queue logic with sample audio files
+- Run tests with `pytest` (all tests use mocked APIs)
 - The PRD Section 6.4 contains the LLM prompt structure for classification
 - Error handling strategy is detailed in PRD Section 9

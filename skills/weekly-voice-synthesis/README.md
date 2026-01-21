@@ -291,6 +291,6 @@ Troy Davis / Stratfield Consulting
 
 ## Related Documentation
 
-- [Voice Capture Pipeline PRD](../../docs/PRD.md)
+- [Voice Capture Pipeline PRD](../../docs/prd.md)
 - [Technical Design Document](../../docs/TDD.md)
 - [Implementation Plan](../../IMPLEMENTATION_PLAN.md)

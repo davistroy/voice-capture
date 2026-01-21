@@ -1286,7 +1286,7 @@ message = client.messages.create(
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/user/voice-capture.git
+git clone https://github.com/davistroy/voice-capture.git
 cd voice-capture
 
 # 2. Create virtual environment

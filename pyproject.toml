@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-capture"
-version = "0.1.0"
+version = "1.0.0"
 description = "Voice capture to Notion pipeline - transforms audio recordings into structured Notion pages"
 readme = "README.md"
 license = {text = "MIT"}
@@ -65,9 +65,9 @@ dev = [
 voice-capture = "src.main:main"
 
 [project.urls]
-Homepage = "https://github.com/troydavis/voice-capture"
-Documentation = "https://github.com/troydavis/voice-capture/blob/main/README.md"
-Repository = "https://github.com/troydavis/voice-capture"
+Homepage = "https://github.com/davistroy/voice-capture"
+Documentation = "https://github.com/davistroy/voice-capture/blob/main/README.md"
+Repository = "https://github.com/davistroy/voice-capture"
 
 [tool.setuptools.packages.find]
 where = ["."]
