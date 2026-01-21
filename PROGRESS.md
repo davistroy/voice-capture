@@ -276,3 +276,20 @@ Integrated classification service into the pipeline orchestrator. Added Classifi
 
 **Summary:**
 Implemented Pushover notification integration for system health alerts. Created PushoverService class with send_notification() method supporting priorities, deep links, and rate limiting. Added specialized methods for processing failures, daily summaries, high failure rate alerts, and queue backup alerts. Uses aiohttp for async HTTP requests. Comprehensive unit tests with mocked Pushover API validate all functionality.
+
+---
+
+## 2026-01-20
+
+### Work Item 3.2: Daily Health Check
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/health/__init__.py`
+- `src/health/checker.py`
+- `src/cli/health_check.py`
+- `tests/test_health_check.py`
+
+**Summary:**
+Implemented daily health check system for monitoring pipeline health. Created HealthChecker class with connectivity checks for database, OpenAI API, Claude API, Notion API, and Pushover API, plus directory permission validation. Includes stats collection for captures received, completed, failed, and queue depth with failure rate calculation. Added health_check CLI command for standalone execution and scheduled runs via cron. Implements alerting rules for high failure rates, queue backups, and API unreachability.

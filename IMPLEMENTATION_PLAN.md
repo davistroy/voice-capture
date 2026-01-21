@@ -730,7 +730,7 @@ Uses aiohttp for async HTTP requests instead of python-pushover package (more co
 
 ---
 
-#### 3.2 Daily Health Check
+#### 3.2 Daily Health Check ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §10.3, PRD §9.3
 **Files Affected:**
@@ -743,34 +743,37 @@ Uses aiohttp for async HTTP requests instead of python-pushover package (more co
 Implement daily health check that runs at 9 PM (configurable). Checks API connectivity, directory permissions, processing stats, and queue status. Sends summary notification.
 
 **Tasks:**
-1. [ ] Create HealthChecker class with checks for:
+1. [x] Create HealthChecker class with checks for:
    - Database connectivity
    - OpenAI API reachability (simple test call)
    - Claude API reachability (simple test call)
    - Notion API reachability (database query)
    - Pushover API reachability
    - Directory permissions (inbox, processing, failed)
-2. [ ] Implement stats collection:
+2. [x] Implement stats collection:
    - Captures received in last 24 hours
    - Captures completed successfully
    - Captures failed
    - Current queue depth
    - Failure rate calculation
-3. [ ] Create health_check CLI command:
+3. [x] Create health_check CLI command:
    - `python -m src.cli.health_check`
    - Runs all checks and reports status
    - Sends notification via Pushover
-4. [ ] Add scheduled execution (cron or APScheduler)
-5. [ ] Implement alerting rules:
+4. [x] Add scheduled execution (cron or APScheduler)
+5. [x] Implement alerting rules:
    - Failure rate > 20% → High priority alert
    - Queue backup > 10 items → Normal alert
    - API unreachable → High priority alert
 
 **Acceptance Criteria:**
-- [ ] All health checks run without errors
-- [ ] Daily summary sent at configured time
-- [ ] Alerts triggered for threshold breaches
-- [ ] CLI command works standalone
+- [x] All health checks run without errors
+- [x] Daily summary sent at configured time
+- [x] Alerts triggered for threshold breaches
+- [x] CLI command works standalone
+
+**Notes:**
+Scheduled execution via cron (per TDD §8.4): `0 21 * * * /path/to/venv/bin/python -m src.cli.health_check`
 
 ---
 
