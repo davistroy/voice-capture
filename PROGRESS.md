@@ -138,3 +138,19 @@ Implemented Notion API integration for creating pages in the Voice Captures data
 
 **Summary:**
 Implemented the pipeline orchestrator that coordinates end-to-end processing. Includes RetryConfig dataclass with exponential backoff and jitter calculation, PipelineOrchestrator class with state machine management (pending → transcribing → classifying → posting → complete), error handling with retry logic, batch processing via process_pending_queue(), file management (deletion on success, move to failed directory on max retries), and comprehensive unit tests for state transitions.
+
+---
+
+## 2026-01-20
+
+### Work Item 1.8: Main Application Entry Point
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/main.py`
+- `src/cli/__init__.py`
+- `src/cli/verify_config.py`
+
+**Summary:**
+Created main application entry point that initializes all services, starts the folder watcher, and runs the processing loop. Includes async main function with dependency injection, graceful shutdown handling on SIGTERM/SIGINT, verify_config CLI command for checking environment variables and API connectivity, logging configuration per TDD specification, and Docker entrypoint support.
