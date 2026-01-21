@@ -625,7 +625,7 @@ Enhance Notion integration to support template-specific property mapping. Build 
 
 ---
 
-#### 2.5 Pipeline Integration
+#### 2.5 Pipeline Integration ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §5.1
 **Files Affected:**
@@ -636,20 +636,20 @@ Enhance Notion integration to support template-specific property mapping. Build 
 Integrate classification service into the pipeline orchestrator. Add classifying state to state machine. Pass classification results to Notion service.
 
 **Tasks:**
-1. [ ] Add ClassificationService to orchestrator dependencies
-2. [ ] Implement classifying state in process_capture():
+1. [x] Add ClassificationService to orchestrator dependencies
+2. [x] Implement classifying state in process_capture():
    - After transcription: update status to classifying
    - Call classification service with transcript and metadata
    - Store classification result in database
    - Handle classification errors with retry
-3. [ ] Pass ClassificationResult to Notion service
-4. [ ] Update tests for full pipeline with classification
+3. [x] Pass ClassificationResult to Notion service
+4. [x] Update tests for full pipeline with classification
 
 **Acceptance Criteria:**
-- [ ] State machine includes classifying state
-- [ ] Classification results stored in database
-- [ ] Notion pages use template from classification
-- [ ] Classification errors retry correctly
+- [x] State machine includes classifying state
+- [x] Classification results stored in database
+- [x] Notion pages use template from classification
+- [x] Classification errors retry correctly
 
 ---
 

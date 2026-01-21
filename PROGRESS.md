@@ -245,3 +245,18 @@ Implemented LLM classification service using Claude Sonnet. Created classificati
 
 **Summary:**
 Enhanced Notion integration to support template-specific property mapping. Created property_mapper.py for mapping all field types (title, date, select, multi_select, rich_text, number, checkbox) to Notion properties. Implemented content_builder.py with Jinja2 template rendering for page body generation. Updated client.py to accept template config, map extracted fields dynamically, and include Type property for template filtering. Comprehensive unit tests validate all property type mappings and content rendering.
+
+---
+
+## 2026-01-20
+
+### Work Item 2.5: Pipeline Integration
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/pipeline/orchestrator.py`
+- `tests/test_pipeline_classification.py`
+
+**Summary:**
+Integrated classification service into the pipeline orchestrator. Added ClassificationService as an orchestrator dependency, implemented the classifying state in the state machine (pending → transcribing → classifying → posting → complete), stored classification results in the database, and passed ClassificationResult to the Notion service for template-specific page creation. Added comprehensive tests for the full pipeline with classification.

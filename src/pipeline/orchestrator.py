@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from src.db.database import Database
 from src.db.models import CaptureRow
@@ -31,6 +31,9 @@ from src.notion.client import NotionService, CaptureMetadata, NotionError
 from src.pipeline.retry import RetryConfig
 from src.transcription.service import TranscriptionService
 from src.transcription.base import TranscriptionError, InvalidAudioError
+
+if TYPE_CHECKING:
+    from src.classification import ClassificationService, TemplateLoader
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +86,20 @@ class PipelineOrchestrator:
     - Skips classifying stage (uses generic template)
     - Direct path: pending -> transcribing -> posting -> complete
 
+    Phase 2+ behavior:
+    - Full pipeline with classification
+    - Path: pending -> transcribing -> classifying -> posting -> complete
+    - Uses ClassificationService to determine template and extract fields
+    - Passes classification result and template to Notion for property mapping
+
     Args:
         db: Database instance for state management.
         transcription: Transcription service instance.
         notion: Notion service instance.
         retry_config: Retry configuration (defaults to TDD spec).
         failed_path: Directory for failed files.
-        classification: Optional classification service (Phase 2).
+        classification: Optional classification service (Phase 2+).
+        template_loader: Optional template loader for accessing templates (Phase 2+).
     """
 
     def __init__(
@@ -99,7 +109,8 @@ class PipelineOrchestrator:
         notion: NotionService,
         retry_config: Optional[RetryConfig] = None,
         failed_path: Optional[Path] = None,
-        classification=None,  # Phase 2: ClassificationService
+        classification: Optional["ClassificationService"] = None,
+        template_loader: Optional["TemplateLoader"] = None,
     ):
         self._db = db
         self._transcription = transcription
@@ -107,6 +118,7 @@ class PipelineOrchestrator:
         self._retry_config = retry_config or RetryConfig()
         self._failed_path = failed_path or Path("/app/failed")
         self._classification = classification  # None in Phase 1
+        self._template_loader = template_loader  # None in Phase 1
 
     async def process_capture(self, capture_id: int) -> ProcessingResult:
         """Execute full pipeline for a single capture.
@@ -270,7 +282,7 @@ class PipelineOrchestrator:
         """Perform classification stage.
 
         Phase 1: This is a no-op, uses generic template.
-        Phase 2: Will call classification service.
+        Phase 2+: Calls classification service to determine template and extract fields.
 
         Transitions: classifying -> posting
 
@@ -299,17 +311,55 @@ class PipelineOrchestrator:
 
             return await self._db.get_capture_by_id(capture_id)
 
-        # Phase 2: Actual classification would go here
+        # Phase 2+: Perform actual classification
         try:
-            # TODO: Phase 2 - call classification service
-            # result = await self._classification.classify(capture.transcript, metadata)
-            # await self._db.update_classification(...)
-            pass
+            # Import here to avoid circular imports
+            from src.classification.prompt_builder import TranscriptMetadata
 
+            # Build metadata for classification
+            metadata = TranscriptMetadata(
+                captured_at=capture.captured_at,
+                duration_seconds=capture.transcript_duration_seconds,
+                device=capture.device or "unknown",
+            )
+
+            # Call classification service
+            result = await self._classification.classify(
+                transcript=capture.transcript or "",
+                metadata=metadata,
+            )
+
+            # Store classification result in database
+            await self._db.update_classification(
+                capture_id=capture_id,
+                template=result.template_name,
+                confidence=result.confidence,
+                fields=result.fields,
+                title=result.title,
+                tags=result.tags,
+            )
+
+            logger.info(
+                f"Capture {capture_id}: classified as {result.template_name} "
+                f"(confidence={result.confidence:.2f})"
+            )
+
+            # Transition to posting
             await self._db.update_status(capture_id, "posting")
+            logger.debug(f"Capture {capture_id}: status -> posting")
+
             return await self._db.get_capture_by_id(capture_id)
 
         except Exception as e:
+            # Import classification error type for specific handling
+            try:
+                from src.classification import ClassificationError
+                is_classification_error = isinstance(e, ClassificationError)
+            except ImportError:
+                is_classification_error = False
+
+            # Classification errors are retryable (API issues, parse errors, etc.)
+            logger.warning(f"Classification failed for capture {capture_id}: {e}")
             return await self._handle_failure(
                 capture=capture,
                 stage=ProcessingStage.CLASSIFYING,
@@ -322,6 +372,9 @@ class PipelineOrchestrator:
 
         Transitions: posting -> complete
         On success: Delete source audio file
+
+        Phase 1 behavior: Creates basic page with generic template.
+        Phase 2+ behavior: Creates template-specific page with extracted fields.
 
         Args:
             capture: The capture record to post.
@@ -349,11 +402,38 @@ class PipelineOrchestrator:
             # Generate title
             title = capture.suggested_title or self._generate_title_from_transcript(capture.transcript)
 
-            # Create Notion page
+            # Build classification result if we have classification data
+            classification = None
+            template = None
+
+            if capture.template_name and self._template_loader:
+                # Build ClassificationResult from stored data
+                import json
+                classification = ClassificationResult(
+                    template_name=capture.template_name,
+                    confidence=capture.classification_confidence or 0.0,
+                    fields=capture.extracted_fields or {},
+                    title=capture.suggested_title or title,
+                    tags=capture.tags or [],
+                    reasoning=None,
+                )
+
+                # Get template configuration
+                template = self._template_loader.get_template(capture.template_name)
+                if not template:
+                    logger.warning(
+                        f"Template '{capture.template_name}' not found, "
+                        f"falling back to basic page for capture {capture_id}"
+                    )
+                    classification = None
+
+            # Create Notion page (with or without template-specific data)
             page = await self._notion.create_capture_page(
                 transcription=transcription,
                 metadata=metadata,
                 title=title,
+                classification=classification,
+                template=template,
             )
 
             # Update database with Notion result
