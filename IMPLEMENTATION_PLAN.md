@@ -1023,7 +1023,7 @@ Handle weeks with few captures (<3) by prompting for supplemental input. Incorpo
 
 ---
 
-#### 4.5 Summary Generation & Storage
+#### 4.5 Summary Generation & Storage ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §13.1, PRD §8.2
 **Files Affected:**
@@ -1035,23 +1035,23 @@ Handle weeks with few captures (<3) by prompting for supplemental input. Incorpo
 Generate weekly summary using Claude and store in Weekly Summaries Notion database. Return summary to user.
 
 **Tasks:**
-1. [ ] Implement generate_synthesis():
+1. [x] Implement generate_synthesis():
    - Build prompt from captures
    - Call Claude API
    - Parse response into structured summary
-2. [ ] Implement create_summary_page():
+2. [x] Implement create_summary_page():
    - Create page in Weekly Summaries database
    - Set date range properties
    - Include full summary content
    - Link to source captures where possible
-3. [ ] Return summary text and Notion URL to user
-4. [ ] Write tests for generation and storage
+3. [x] Return summary text and Notion URL to user
+4. [x] Write tests for generation and storage
 
 **Acceptance Criteria:**
-- [ ] Summary follows PRD §8.2 template
-- [ ] Summary stored in Weekly Summaries database
-- [ ] Links to original captures included
-- [ ] Statistics accurate
+- [x] Summary follows PRD §8.2 template
+- [x] Summary stored in Weekly Summaries database
+- [x] Links to original captures included
+- [x] Statistics accurate
 
 ---
 

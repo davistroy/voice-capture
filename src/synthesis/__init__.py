@@ -40,6 +40,22 @@ from src.synthesis.sparse_handler import (
     get_sparse_week_questions,
 )
 
+from src.synthesis.generator import (
+    SynthesisGenerator,
+    SynthesisGenerationError,
+    SynthesisParseError,
+    SynthesisResult,
+    generate_synthesis,
+)
+
+from src.synthesis.notion_writer import (
+    NotionSummaryWriter,
+    NotionWriterError,
+    NotionWriterRateLimitError,
+    SummaryPage,
+    create_summary_page,
+)
+
 __all__ = [
     # Notion Query
     "NotionQueryService",
@@ -63,4 +79,16 @@ __all__ = [
     "detect_sparse_week",
     "format_supplemental_input",
     "get_sparse_week_questions",
+    # Generator
+    "SynthesisGenerator",
+    "SynthesisGenerationError",
+    "SynthesisParseError",
+    "SynthesisResult",
+    "generate_synthesis",
+    # Notion Writer
+    "NotionSummaryWriter",
+    "NotionWriterError",
+    "NotionWriterRateLimitError",
+    "SummaryPage",
+    "create_summary_page",
 ]

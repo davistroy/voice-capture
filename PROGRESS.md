@@ -406,3 +406,20 @@ Implemented synthesis prompt builder for weekly voice capture summaries. Created
 
 **Summary:**
 Implemented sparse week handling for weekly synthesis. Detects weeks with fewer than 3 captures and generates targeted questions per PRD specification to supplement the synthesis. Accepts verbal/text responses, incorporates supplemental input into the synthesis prompt, and notes in the summary when supplemental input was used. Comprehensive unit tests validate sparse week detection and handling functionality.
+
+---
+
+## 2026-01-20
+
+### Work Item 4.5: Summary Generation & Storage
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/synthesis/generator.py`
+- `src/synthesis/notion_writer.py`
+- `src/synthesis/__init__.py`
+- `tests/test_synthesis_generator.py`
+
+**Summary:**
+Implemented summary generation and storage for weekly synthesis. Created generator.py with generate_synthesis() to build prompts from captures, call Claude API, and parse responses into structured summaries. Created notion_writer.py with create_summary_page() to store summaries in the Weekly Summaries Notion database with date range properties, full summary content, and links to source captures. Returns summary text and Notion URL to user. Comprehensive unit tests validate generation and storage functionality.
