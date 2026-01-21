@@ -6,6 +6,7 @@ including:
 - Grouping captures by template type
 - Building synthesis prompts
 - Generating weekly summaries
+- Handling sparse weeks with supplemental input
 
 The module is designed to work with the Claude skill for on-demand
 weekly reflection synthesis via Notion MCP.
@@ -28,6 +29,17 @@ from src.synthesis.prompt_builder import (
     build_synthesis_prompt,
 )
 
+from src.synthesis.sparse_handler import (
+    SPARSE_WEEK_THRESHOLD,
+    SparseWeekHandler,
+    SparseWeekPromptResult,
+    SparseWeekQuestion,
+    build_sparse_week_context,
+    detect_sparse_week,
+    format_supplemental_input,
+    get_sparse_week_questions,
+)
+
 __all__ = [
     # Notion Query
     "NotionQueryService",
@@ -42,4 +54,13 @@ __all__ = [
     "SynthesisPromptBuilder",
     "WeeklySummaryData",
     "build_synthesis_prompt",
+    # Sparse Week Handling
+    "SPARSE_WEEK_THRESHOLD",
+    "SparseWeekHandler",
+    "SparseWeekPromptResult",
+    "SparseWeekQuestion",
+    "build_sparse_week_context",
+    "detect_sparse_week",
+    "format_supplemental_input",
+    "get_sparse_week_questions",
 ]

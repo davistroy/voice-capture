@@ -994,7 +994,7 @@ Build synthesis prompt per TDD §13.2 structure. Include grouped captures, synth
 
 ---
 
-#### 4.4 Sparse Week Handling
+#### 4.4 Sparse Week Handling ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §13.1, PRD §8.3
 **Files Affected:**
@@ -1005,21 +1005,21 @@ Build synthesis prompt per TDD §13.2 structure. Include grouped captures, synth
 Handle weeks with few captures (<3) by prompting for supplemental input. Incorporate user responses into synthesis.
 
 **Tasks:**
-1. [ ] Detect sparse week (< 3 captures)
-2. [ ] Generate targeted questions per PRD §8.3:
+1. [x] Detect sparse week (< 3 captures)
+2. [x] Generate targeted questions per PRD §8.3:
    - "What were your main work focuses this week?"
    - "Any significant meetings or conversations?"
    - "What's carrying over to next week?"
-3. [ ] Accept verbal/text responses
-4. [ ] Incorporate supplemental input into synthesis
-5. [ ] Note in summary that supplemental input was included
-6. [ ] Write tests for sparse week detection and handling
+3. [x] Accept verbal/text responses
+4. [x] Incorporate supplemental input into synthesis
+5. [x] Note in summary that supplemental input was included
+6. [x] Write tests for sparse week detection and handling
 
 **Acceptance Criteria:**
-- [ ] Sparse weeks prompt for additional input
-- [ ] Questions are targeted and helpful
-- [ ] Supplemental input incorporated into synthesis
-- [ ] Summary notes when supplemental input used
+- [x] Sparse weeks prompt for additional input
+- [x] Questions are targeted and helpful
+- [x] Supplemental input incorporated into synthesis
+- [x] Summary notes when supplemental input used
 
 ---
 

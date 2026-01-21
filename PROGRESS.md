@@ -390,3 +390,19 @@ Implemented Notion query functionality to retrieve captures from a date range fo
 
 **Summary:**
 Implemented synthesis prompt builder for weekly voice capture summaries. Created weekly_summary.md template per PRD specification with sections for Overview, Accomplishments, Key Activities, Challenges & Blockers, Ideas Generated, Insights & Reflections, Upcoming/Next Week, and Capture Statistics. Built prompt_builder.py to construct synthesis prompts with grouped captures by template type, synthesis guidelines, and output format specification. Includes capture content formatting for prompt inclusion. Comprehensive unit tests validate prompt building functionality.
+
+---
+
+## 2026-01-20
+
+### Work Item 4.4: Sparse Week Handling
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/synthesis/sparse_handler.py`
+- `src/synthesis/__init__.py`
+- `tests/test_sparse_handling.py`
+
+**Summary:**
+Implemented sparse week handling for weekly synthesis. Detects weeks with fewer than 3 captures and generates targeted questions per PRD specification to supplement the synthesis. Accepts verbal/text responses, incorporates supplemental input into the synthesis prompt, and notes in the summary when supplemental input was used. Comprehensive unit tests validate sparse week detection and handling functionality.
