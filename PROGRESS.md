@@ -309,3 +309,21 @@ Implemented daily health check system for monitoring pipeline health. Created He
 
 **Summary:**
 Hardened retry logic across all services with consistent backoff behavior, proper error categorization (retryable vs non-retryable), state preservation across retries, circuit breaker pattern for sustained failures, and improved error messages in failure_log table. Comprehensive unit tests validate retry behavior under various failure modes.
+
+---
+
+## 2026-01-20
+
+### Work Item 3.4: Manual Recovery CLI
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/cli/retry.py`
+- `src/cli/reset_capture.py`
+- `src/cli/queue_status.py`
+- `src/cli/__init__.py`
+- `tests/test_cli.py`
+
+**Summary:**
+Implemented CLI commands for manual intervention in the voice capture pipeline. Created retry.py for retrying failed captures (single or batch with --all-failed, with optional --from-stage for resuming from a specific pipeline stage), reset_capture.py for moving files back to inbox and clearing failed status, and queue_status.py for viewing pending/processing/failed counts with detailed error messages for failed items. All commands include confirmation prompts for destructive operations and helpful --help output.

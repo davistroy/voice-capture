@@ -808,7 +808,7 @@ Harden retry logic across all services. Ensure consistent backoff behavior, prop
 
 ---
 
-#### 3.4 Manual Recovery CLI
+#### 3.4 Manual Recovery CLI ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §12
 **Files Affected:**
@@ -821,24 +821,24 @@ Harden retry logic across all services. Ensure consistent backoff behavior, prop
 Create CLI commands for manual intervention: retry failed captures, reset capture status, view queue status, and move files for reprocessing.
 
 **Tasks:**
-1. [ ] Implement retry CLI per TDD §12.1:
+1. [x] Implement retry CLI per TDD §12.1:
    - `python -m src.cli.retry --capture-id 42`
    - `python -m src.cli.retry --all-failed`
    - `python -m src.cli.retry --capture-id 42 --from-stage classifying`
-2. [ ] Implement reset_capture CLI:
+2. [x] Implement reset_capture CLI:
    - `python -m src.cli.reset_capture --filename "filename.m4a"`
    - Moves file back to inbox, clears failed status
-3. [ ] Implement queue_status CLI:
+3. [x] Implement queue_status CLI:
    - Show pending, processing, failed counts
    - List failed items with error messages
-4. [ ] Add confirmation prompts for destructive operations
-5. [ ] Write tests for CLI commands
+4. [x] Add confirmation prompts for destructive operations
+5. [x] Write tests for CLI commands
 
 **Acceptance Criteria:**
-- [ ] Retry commands work for single and batch operations
-- [ ] Reset moves file and clears database status
-- [ ] Queue status provides actionable information
-- [ ] Commands have helpful --help output
+- [x] Retry commands work for single and batch operations
+- [x] Reset moves file and clears database status
+- [x] Queue status provides actionable information
+- [x] Commands have helpful --help output
 
 ---
 
