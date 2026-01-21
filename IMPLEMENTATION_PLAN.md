@@ -305,7 +305,7 @@ Use notion-client SDK >=2.0. Phase 2 will add template-specific property mapping
 
 ---
 
-#### 1.7 Pipeline Orchestrator
+#### 1.7 Pipeline Orchestrator ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §5.1, PRD §6.2
 **Files Affected:**
@@ -318,26 +318,26 @@ Use notion-client SDK >=2.0. Phase 2 will add template-specific property mapping
 Implement the pipeline orchestrator that coordinates end-to-end processing. Manages state transitions through the state machine, handles errors with retry logic, moves files on completion/failure.
 
 **Tasks:**
-1. [ ] Create RetryConfig dataclass per TDD §5.2
-2. [ ] Implement exponential backoff with jitter calculation
-3. [ ] Create PipelineOrchestrator class:
+1. [x] Create RetryConfig dataclass per TDD §5.2
+2. [x] Implement exponential backoff with jitter calculation
+3. [x] Create PipelineOrchestrator class:
    - Inject all services (db, transcription, notion)
    - Implement `process_capture(capture_id)` with state machine
    - State transitions: pending → transcribing → classifying → posting → complete
    - Skip classifying stage in Phase 1 (use generic template)
-4. [ ] Implement error handling:
+4. [x] Implement error handling:
    - On error: increment retry_count, log error, stay in current state
    - After max retries: move to failed, move file to /failed/
-5. [ ] Implement `process_pending_queue()` for batch processing
-6. [ ] Delete source audio file only after successful Notion post
-7. [ ] Write comprehensive unit tests for state transitions
+5. [x] Implement `process_pending_queue()` for batch processing
+6. [x] Delete source audio file only after successful Notion post
+7. [x] Write comprehensive unit tests for state transitions
 
 **Acceptance Criteria:**
-- [ ] State machine transitions correctly per TDD §5.1 diagram
-- [ ] Failed items retry up to 3x with backoff
-- [ ] After max retries: status=failed, file in /failed/
-- [ ] Source audio deleted only on complete
-- [ ] Process resumes correctly after service restart
+- [x] State machine transitions correctly per TDD §5.1 diagram
+- [x] Failed items retry up to 3x with backoff
+- [x] After max retries: status=failed, file in /failed/
+- [x] Source audio deleted only on complete
+- [x] Process resumes correctly after service restart
 
 **Notes:**
 Single-threaded sequential processing per TDD decision. Async I/O for API calls provides sufficient performance.

@@ -121,3 +121,20 @@ Implemented transcription service with abstract backend interface (Strategy patt
 
 **Summary:**
 Implemented Notion API integration for creating pages in the Voice Captures database. Includes NotionService class with create_capture_page() method, page body builder with summary and raw transcript sections, transcript truncation at 2000 chars, retry logic with exponential backoff, rate limiting support via Retry-After header, and comprehensive unit tests with mocked Notion client.
+
+---
+
+## 2026-01-20
+
+### Work Item 1.7: Pipeline Orchestrator
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/pipeline/__init__.py`
+- `src/pipeline/retry.py`
+- `src/pipeline/orchestrator.py`
+- `tests/test_pipeline.py`
+
+**Summary:**
+Implemented the pipeline orchestrator that coordinates end-to-end processing. Includes RetryConfig dataclass with exponential backoff and jitter calculation, PipelineOrchestrator class with state machine management (pending → transcribing → classifying → posting → complete), error handling with retry logic, batch processing via process_pending_queue(), file management (deletion on success, move to failed directory on max retries), and comprehensive unit tests for state transitions.
