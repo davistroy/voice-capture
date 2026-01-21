@@ -930,7 +930,7 @@ Define Claude skill for weekly voice capture synthesis. Skill is invoked manuall
 
 ---
 
-#### 4.2 Notion Query Module
+#### 4.2 Notion Query Module ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §4.4, TDD §13.1
 **Files Affected:**
@@ -942,20 +942,20 @@ Define Claude skill for weekly voice capture synthesis. Skill is invoked manuall
 Implement Notion query functionality to retrieve captures from a date range. Group results by template type for synthesis.
 
 **Tasks:**
-1. [ ] Implement query_captures_by_date_range():
+1. [x] Implement query_captures_by_date_range():
    - Query Voice Captures database
    - Filter by date range (last 7 days)
    - Return all captures with full content
-2. [ ] Implement group_by_template():
+2. [x] Implement group_by_template():
    - Group captures by Type property
    - Return dict of template → list of captures
-3. [ ] Add pagination handling for large result sets
-4. [ ] Write tests with mocked Notion responses
+3. [x] Add pagination handling for large result sets
+4. [x] Write tests with mocked Notion responses
 
 **Acceptance Criteria:**
-- [ ] Queries return all captures in date range
-- [ ] Grouping by template type works correctly
-- [ ] Pagination handles weeks with many captures
+- [x] Queries return all captures in date range
+- [x] Grouping by template type works correctly
+- [x] Pagination handles weeks with many captures
 
 ---
 

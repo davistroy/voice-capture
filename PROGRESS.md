@@ -357,3 +357,19 @@ Integrated notification service into the pipeline orchestrator. Added Notificati
 
 **Summary:**
 Created Claude skill definition for weekly voice capture synthesis. Includes skill.yaml with proper frontmatter (name, triggers, prerequisites for Notion MCP), detailed behavioral documentation (query captures from last 7 days, group by template type, handle sparse weeks, generate synthesis), and README.md with comprehensive usage instructions.
+
+---
+
+## 2026-01-20
+
+### Work Item 4.2: Notion Query Module
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/synthesis/__init__.py`
+- `src/synthesis/notion_query.py`
+- `tests/test_synthesis_query.py`
+
+**Summary:**
+Implemented Notion query functionality to retrieve captures from a date range for weekly synthesis. Created query_captures_by_date_range() to query Voice Captures database with date filtering, group_by_template() to organize captures by Type property, and pagination handling for large result sets. Comprehensive unit tests with mocked Notion responses validate all functionality.
