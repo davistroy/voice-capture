@@ -959,7 +959,7 @@ Implement Notion query functionality to retrieve captures from a date range. Gro
 
 ---
 
-#### 4.3 Synthesis Prompt Builder
+#### 4.3 Synthesis Prompt Builder ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §13.2, PRD §8.2
 **Files Affected:**
@@ -971,7 +971,7 @@ Implement Notion query functionality to retrieve captures from a date range. Gro
 Build synthesis prompt per TDD §13.2 structure. Include grouped captures, synthesis guidelines, and output format specification.
 
 **Tasks:**
-1. [ ] Create weekly summary template per PRD §8.2:
+1. [x] Create weekly summary template per PRD §8.2:
    - Overview (2-3 sentences)
    - Accomplishments (bullet list)
    - Key Activities (narrative)
@@ -980,17 +980,17 @@ Build synthesis prompt per TDD §13.2 structure. Include grouped captures, synth
    - Insights & Reflections
    - Upcoming / Next Week
    - Capture Statistics
-2. [ ] Build synthesis prompt:
+2. [x] Build synthesis prompt:
    - Group captures by type
    - Include synthesis guidelines
    - Specify output format
-3. [ ] Handle capture content formatting for prompt
-4. [ ] Write tests for prompt building
+3. [x] Handle capture content formatting for prompt
+4. [x] Write tests for prompt building
 
 **Acceptance Criteria:**
-- [ ] Prompt includes all captured content
-- [ ] Synthesis guidelines are clear
-- [ ] Output format matches PRD specification
+- [x] Prompt includes all captured content
+- [x] Synthesis guidelines are clear
+- [x] Output format matches PRD specification
 
 ---
 

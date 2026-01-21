@@ -13,14 +13,33 @@ weekly reflection synthesis via Notion MCP.
 
 from src.synthesis.notion_query import (
     NotionQueryService,
+    NotionQueryError,
+    NotionQueryRateLimitError,
     VoiceCapture,
     query_captures_by_date_range,
     group_by_template,
 )
 
+from src.synthesis.prompt_builder import (
+    CaptureStatistics,
+    IdeaReference,
+    SynthesisPromptBuilder,
+    WeeklySummaryData,
+    build_synthesis_prompt,
+)
+
 __all__ = [
+    # Notion Query
     "NotionQueryService",
+    "NotionQueryError",
+    "NotionQueryRateLimitError",
     "VoiceCapture",
     "query_captures_by_date_range",
     "group_by_template",
+    # Prompt Builder
+    "CaptureStatistics",
+    "IdeaReference",
+    "SynthesisPromptBuilder",
+    "WeeklySummaryData",
+    "build_synthesis_prompt",
 ]

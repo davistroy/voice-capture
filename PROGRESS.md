@@ -373,3 +373,20 @@ Created Claude skill definition for weekly voice capture synthesis. Includes ski
 
 **Summary:**
 Implemented Notion query functionality to retrieve captures from a date range for weekly synthesis. Created query_captures_by_date_range() to query Voice Captures database with date filtering, group_by_template() to organize captures by Type property, and pagination handling for large result sets. Comprehensive unit tests with mocked Notion responses validate all functionality.
+
+---
+
+## 2026-01-20
+
+### Work Item 4.3: Synthesis Prompt Builder
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/synthesis/prompt_builder.py`
+- `src/synthesis/templates/weekly_summary.md`
+- `src/synthesis/__init__.py`
+- `tests/test_synthesis_prompt.py`
+
+**Summary:**
+Implemented synthesis prompt builder for weekly voice capture summaries. Created weekly_summary.md template per PRD specification with sections for Overview, Accomplishments, Key Activities, Challenges & Blockers, Ideas Generated, Insights & Reflections, Upcoming/Next Week, and Capture Statistics. Built prompt_builder.py to construct synthesis prompts with grouped captures by template type, synthesis guidelines, and output format specification. Includes capture content formatting for prompt inclusion. Comprehensive unit tests validate prompt building functionality.
