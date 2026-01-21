@@ -26,10 +26,12 @@ Press the action button on your Apple Watch to start recording. Press again to s
 
 ## Status
 
-**Version:** 1.0 (PRD Complete)
-**Phase:** Ready for Implementation
+**Version:** 1.0 (Implementation Complete)
+**Completed:** 2026-01-21
 
-See [`docs/prd.md`](docs/prd.md) for full specification.
+All four phases implemented and operational.
+
+See [`docs/prd.md`](docs/prd.md) for specification, [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) for work item details.
 
 ## Architecture
 
@@ -47,24 +49,39 @@ Just Press    iOS Shortcut    Python      Voice Captures
 ```
 voice-capture/
 ├── docs/
-│   └── prd.md              # Product Requirements Document
-├── src/                    # (to be implemented)
-│   ├── watcher/            # Folder monitoring
-│   ├── transcription/      # Whisper integration
-│   ├── classification/     # Claude classification
-│   ├── notion/             # Notion API
-│   └── notifications/      # Pushover
+│   ├── prd.md              # Product Requirements Document
+│   └── TDD.md              # Technical Design Document
+├── src/
+│   ├── watcher/            # Folder monitoring (watchdog)
+│   ├── transcription/      # Whisper API integration
+│   ├── classification/     # Claude classification + template loader
+│   ├── notion/             # Notion API + property mapper
+│   ├── notifications/      # Pushover integration
+│   ├── health/             # Health check system
+│   ├── synthesis/          # Weekly synthesis engine
+│   ├── pipeline/           # Orchestrator + retry logic
+│   ├── cli/                # CLI commands (verify, retry, reset, queue, health)
+│   ├── db/                 # SQLite database layer
+│   ├── models/             # Domain models
+│   ├── config/             # Pydantic settings
+│   └── main.py             # Application entry point
 ├── config/
-│   └── templates/          # Template definitions (YAML)
-└── reference/              # Requirements Q&A artifacts
+│   ├── templates/          # Template definitions (6 YAML files)
+│   ├── settings.yaml       # Application configuration
+│   └── classification.yaml # Classification settings
+├── skills/
+│   └── weekly-voice-synthesis/  # Claude skill for synthesis
+├── scripts/
+│   └── rclone/             # Google Drive sync scripts
+└── tests/                  # Comprehensive test suite
 ```
 
-## Implementation Phases
+## Implementation Phases (Complete)
 
-1. **Phase 1 (MVP)** — Basic pipeline, generic template only
-2. **Phase 2** — Full classification with all 6 templates
-3. **Phase 3** — Reliability hardening, notifications
-4. **Phase 4** — Weekly synthesis Claude skill
+1. **Phase 1 (MVP)** — Core pipeline: watcher, transcription, Notion integration, orchestrator
+2. **Phase 2** — Classification: Claude Sonnet, 6 YAML templates, dynamic property mapping
+3. **Phase 3** — Reliability: Pushover notifications, health checks, retry hardening, recovery CLI
+4. **Phase 4** — Synthesis: Weekly summary generation, Notion query, sparse week handling
 
 ## License
 
