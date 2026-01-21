@@ -1,0 +1,17 @@
+{
+  "template": "research",
+  "confidence": 0.91,
+  "reasoning": "Clear learning intent with specific topic to investigate and questions to answer.",
+  "title": "Learn about vector databases for semantic search",
+  "tags": ["learning", "databases", "ai", "semantic-search"],
+  "fields": {
+    "title": "Learn about vector databases for semantic search",
+    "date": "2026-01-20",
+    "question_topic": "How do vector databases work and which one is best for semantic search applications?",
+    "why_it_matters": "Need to implement semantic search for the knowledge base project. Understanding vector databases is essential for the architecture decision.",
+    "initial_thoughts": "Heard about Pinecone and Weaviate. Need to understand the tradeoffs between hosted vs self-hosted solutions.",
+    "sources": ["Pinecone documentation", "Weaviate blog", "YouTube tutorials"],
+    "status": "To Research",
+    "tags": ["learning", "databases", "ai", "semantic-search"]
+  }
+}

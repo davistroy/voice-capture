@@ -1,0 +1,146 @@
+# Template: Task
+# ==============
+#
+# Action items, to-dos, reminders, and commitments.
+# Imperative statements and things that need to be done.
+#
+# PRD Reference: Section 7.2
+# TDD Reference: Section 3.3 (example template)
+
+name: task
+display_name: Task
+description: |
+  Action items, to-dos, reminders, and commitments.
+  Use for capturing things that need to be done, deadlines,
+  and action items from meetings or conversations.
+enabled: true
+
+triggers:
+  patterns:
+    - "I need to"
+    - "don't forget to"
+    - "remind me to"
+    - "task:"
+    - "todo:"
+    - "to-do:"
+    - "action item"
+    - "need to"
+    - "have to"
+    - "should"
+    - "must"
+    - "gotta"
+    - "make sure to"
+    - "remember to"
+    - "follow up on"
+    - "schedule"
+    - "send"
+    - "call"
+    - "email"
+
+  indicators:
+    - imperative statements
+    - action commitments
+    - deadlines mentioned
+    - responsibility assignments
+    - follow-up requirements
+    - explicit requests or asks
+    - commitment language (will, going to, promised)
+
+fields:
+  - name: title
+    type: title
+    description: Concise action item
+    extraction: |
+      Extract the core action as a brief imperative statement.
+      Start with a verb (e.g., "Review quarterly report", "Call John about project").
+      Keep it under 10 words. Be specific but concise.
+    required: true
+    notion_property: Task
+
+  - name: date_created
+    type: date
+    description: When this task was captured
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date Created
+
+  - name: due_date
+    type: date
+    description: Deadline if mentioned
+    extraction: |
+      Extract explicit date/time references.
+      Look for: specific dates, "by Friday", "next week", "tomorrow", "end of day",
+      "before the meeting", "ASAP", relative time references.
+      Leave empty if no deadline is mentioned or implied.
+    required: false
+    notion_property: Due Date
+
+  - name: priority
+    type: select
+    description: Task priority level
+    extraction: |
+      Infer from urgency language and context.
+      - High: "urgent", "ASAP", "critical", "important", "time-sensitive", "blocking"
+      - Medium: normal tasks, moderate urgency, standard deadlines
+      - Low: "when you get a chance", "eventually", "nice to have", "backlog"
+      Default to Medium if unclear.
+    required: false
+    default: Medium
+    options:
+      - High
+      - Medium
+      - Low
+    notion_property: Priority
+
+  - name: context
+    type: rich_text
+    description: Why, for whom, related project
+    extraction: |
+      Extract any mentioned context, stakeholders, or project references.
+      Include: who it's for, why it matters, related project or initiative,
+      any dependencies or prerequisites, relevant background.
+      Leave empty if none present.
+    required: false
+    notion_property: Context
+
+  - name: status
+    type: select
+    description: Current task status
+    extraction: |
+      Always set to "Not Started" for new tasks.
+      Status will be updated manually as work progresses.
+    required: false
+    default: Not Started
+    options:
+      - Not Started
+      - In Progress
+      - Complete
+    notion_property: Status
+
+  - name: tags
+    type: multi_select
+    description: Topic tags for organization
+    extraction: |
+      Generate 2-5 relevant topic tags based on content.
+      Include: project names, client names, categories (admin, development, writing),
+      areas (work, personal, home), people involved.
+    required: false
+    notion_property: Tags
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Context
+  {{ context | default("No additional context provided.") }}
+
+  {% if due_date %}
+  ## Due Date
+  {{ due_date }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*

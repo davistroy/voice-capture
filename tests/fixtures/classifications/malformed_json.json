@@ -1,0 +1,6 @@
+{
+  "template": "task",
+  "confidence": "not a number",
+  "title": 12345,
+  "tags": "should be an array"
+}

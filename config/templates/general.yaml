@@ -1,0 +1,120 @@
+# Template: General (Fallback)
+# ============================
+#
+# Fallback template for content that doesn't fit other templates.
+# Always enabled and used when classification confidence < 0.7.
+#
+# PRD Reference: Section 7.6
+
+name: general
+display_name: General
+description: |
+  Fallback template for content that doesn't clearly fit other templates.
+  Used when classification confidence is below threshold (0.7) or when
+  content is ambiguous or mixed. Preserves all content with basic structure.
+enabled: true
+
+triggers:
+  # General has minimal triggers since it's the fallback
+  # It catches everything that doesn't match other templates with high confidence
+  patterns: []
+
+  indicators:
+    - mixed content types
+    - ambiguous intent
+    - general observations
+    - miscellaneous notes
+    - unclear categorization
+
+fields:
+  - name: title
+    type: title
+    description: Auto-generated from first sentence or summary
+    extraction: |
+      Generate a descriptive title from the first sentence or main topic.
+      Should capture the essence of the capture in 5-12 words.
+      If content is very mixed, use the first clear topic mentioned.
+    required: true
+    notion_property: Title
+
+  - name: date
+    type: date
+    description: Capture timestamp
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date
+
+  - name: duration
+    type: number
+    description: Recording length in seconds
+    extraction: Use capture metadata duration
+    required: false
+    notion_property: Duration
+
+  - name: device
+    type: select
+    description: Capture device
+    extraction: Use capture metadata device
+    required: false
+    options:
+      - Watch
+      - Phone
+      - Unknown
+    notion_property: Device
+
+  - name: summary
+    type: rich_text
+    description: LLM-generated 2-3 sentence summary
+    extraction: |
+      Generate a 2-3 sentence summary of the capture content.
+      Cover the main points or themes mentioned.
+      Be objective and informative.
+    required: true
+    notion_property: Summary
+
+  - name: suggested_template
+    type: select
+    description: LLM's best guess if confidence was close
+    extraction: |
+      If this was classified as General because confidence was below threshold,
+      indicate which template was the closest match.
+      Options: Journal, Task, Idea, Research, Product, or None if truly ambiguous.
+      Leave as None if the content doesn't fit any category.
+    required: false
+    default: None
+    options:
+      - Journal
+      - Task
+      - Idea
+      - Research
+      - Product
+      - None
+    notion_property: Suggested Template
+
+  - name: tags
+    type: multi_select
+    description: Topic tags for organization
+    extraction: |
+      Generate 2-5 relevant topic tags based on content.
+      Use broad categories that help with future retrieval.
+      Include any identifiable themes, topics, or contexts.
+    required: false
+    notion_property: Tags
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Summary
+  {{ summary | default("No summary provided.") }}
+
+  {% if suggested_template and suggested_template != "None" %}
+  ## Classification Note
+  This capture was categorized as General, but might also fit as: {{ suggested_template }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*

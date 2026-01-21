@@ -1,0 +1,16 @@
+{
+  "template": "journal",
+  "confidence": 0.88,
+  "reasoning": "First-person narrative about the day with emotional reflection and personal observations.",
+  "title": "Productive day clearing the backlog",
+  "tags": ["reflection", "productivity", "work"],
+  "fields": {
+    "title": "Productive day clearing the backlog",
+    "date": "2026-01-20",
+    "mood": "Accomplished",
+    "summary": "Had a great day working through the backlog. Got through more items than expected and feeling good about the progress made on the client project.",
+    "full_entry": "Today was really productive. I managed to get through the entire backlog that had been piling up for weeks. The client project is finally moving forward and I'm feeling accomplished. Need to keep this momentum going.",
+    "people_mentioned": ["client"],
+    "tags": ["reflection", "productivity", "work"]
+  }
+}

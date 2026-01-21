@@ -1,0 +1,10 @@
+{
+  "template": "completely_unknown_template",
+  "confidence": 0.75,
+  "reasoning": "This template doesn't exist.",
+  "title": "Some title",
+  "tags": ["test"],
+  "fields": {
+    "title": "Some title"
+  }
+}

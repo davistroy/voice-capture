@@ -1,0 +1,142 @@
+# Template: Journal
+# =================
+#
+# Personal reflections, daily observations, meeting reflections, mood tracking.
+# First-person narrative about experiences, emotions, and personal updates.
+#
+# PRD Reference: Section 7.1
+
+name: journal
+display_name: Journal
+description: |
+  Personal reflections, daily observations, meeting reflections, and mood tracking.
+  First-person narrative about experiences, emotions, and personal updates.
+  Use for stream-of-consciousness entries, daily check-ins, and processing thoughts.
+enabled: true
+
+triggers:
+  patterns:
+    - "today I"
+    - "feeling"
+    - "reflecting on"
+    - "I feel"
+    - "my day"
+    - "this morning"
+    - "this afternoon"
+    - "this evening"
+    - "had a great"
+    - "had a rough"
+    - "thinking about"
+    - "journal"
+    - "diary"
+    - "personally"
+
+  indicators:
+    - first-person narrative about experiences
+    - emotional expression or mood description
+    - daily observations and reflections
+    - meeting reflections (how it felt, what I thought)
+    - personal updates and life events
+    - processing thoughts and feelings
+    - gratitude or appreciation expressions
+    - introspective language
+
+fields:
+  - name: title
+    type: title
+    description: Date plus brief theme of the entry
+    extraction: |
+      Generate a title in the format "[Date] - [Brief theme]"
+      The theme should be 2-5 words capturing the main topic or mood.
+      Example: "2026-01-20 - Productive Monday" or "2026-01-20 - Processing client feedback"
+    required: true
+    notion_property: Title
+
+  - name: date
+    type: date
+    description: Capture timestamp
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date
+
+  - name: mood
+    type: select
+    description: Overall emotional state or energy level
+    extraction: |
+      Infer mood from emotional language and energy indicators.
+      - Energized: excited, enthusiastic, pumped, motivated, great
+      - Focused: productive, in the zone, concentrated, clear-headed
+      - Neutral: okay, fine, normal, average, steady
+      - Tired: exhausted, drained, sleepy, low energy, fatigued
+      - Frustrated: annoyed, stressed, overwhelmed, irritated, stuck
+      Default to Neutral if unclear.
+    required: false
+    default: Neutral
+    options:
+      - Energized
+      - Focused
+      - Neutral
+      - Tired
+      - Frustrated
+    notion_property: Mood
+
+  - name: summary
+    type: rich_text
+    description: 2-3 sentence summary of the entry
+    extraction: |
+      Distill the main themes and feelings into 2-3 concise sentences.
+      Focus on the key events, emotions, or realizations.
+      Write in third-person perspective for clarity.
+    required: true
+    notion_property: Summary
+
+  - name: full_entry
+    type: rich_text
+    description: Narrative content, lightly formatted
+    extraction: |
+      Preserve the full narrative content, lightly formatted for readability.
+      Add paragraph breaks where natural pauses occur.
+      Keep the first-person voice and authentic expression intact.
+    required: false
+    notion_property: Full Entry
+
+  - name: people_mentioned
+    type: multi_select
+    description: Names of people mentioned in the entry
+    extraction: |
+      Extract any names of people mentioned in the transcript.
+      Include first names, full names, or roles if names aren't given (e.g., "my manager").
+      Leave empty if no people are mentioned.
+    required: false
+    notion_property: People Mentioned
+
+  - name: tags
+    type: multi_select
+    description: Topic tags for organization
+    extraction: |
+      Generate 2-5 relevant topic tags based on content.
+      Include themes like: work, personal, health, relationships, growth, travel,
+      projects, meetings, decisions, challenges, wins, learning.
+    required: false
+    notion_property: Tags
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Summary
+  {{ summary | default("No summary provided.") }}
+
+  ## Full Entry
+  {{ full_entry | default(transcript) }}
+
+  {% if people_mentioned %}
+  ## People Mentioned
+  {{ people_mentioned | join(", ") }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*

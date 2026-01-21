@@ -1,0 +1,6 @@
+# Template Configuration Directory
+#
+# Place YAML template definitions here.
+# Templates define how voice captures are classified and structured.
+#
+# See IMPLEMENTATION_PLAN.md Phase 2 for template implementation details.

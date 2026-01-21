@@ -1,0 +1,18 @@
+Here's the classification result:
+
+```json
+{
+  "template": "task",
+  "confidence": 0.85,
+  "reasoning": "Clear task with action item.",
+  "title": "Send email to client",
+  "tags": ["email", "client"],
+  "fields": {
+    "title": "Send email to client",
+    "priority": "Medium",
+    "status": "Not Started"
+  }
+}
+```
+
+Let me know if you need anything else!

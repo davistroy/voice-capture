@@ -1,0 +1,123 @@
+# Template: {Name}
+# ================
+#
+# Copy this file and customize for new template types.
+# Remove the leading underscore from the filename to enable the template.
+#
+# See TDD 3.3 for the full schema specification.
+# See PRD 7.1-7.6 for template content examples.
+
+name: template_name              # Internal identifier (lowercase, no spaces)
+display_name: Template Name      # Human-readable name shown in Notion
+description: |
+  What this template captures. Be specific about the type of content
+  this template is designed for. This helps the LLM make accurate
+  classification decisions.
+enabled: true                    # Set to false to disable without removing
+
+# Triggers help the classification LLM identify when to use this template
+triggers:
+  # Explicit phrase patterns - exact or near-exact matches
+  patterns:
+    - "phrase pattern 1"         # e.g., "I need to", "remind me to"
+    - "phrase pattern 2"         # e.g., "task:", "todo:"
+    - "phrase pattern 3"
+
+  # Semantic indicators - concepts/characteristics the LLM should look for
+  indicators:
+    - semantic indicator 1       # e.g., "imperative statements"
+    - semantic indicator 2       # e.g., "action commitments"
+    - semantic indicator 3       # e.g., "deadlines mentioned"
+
+# Field definitions - what to extract from the transcript
+# Each field maps to a Notion property
+fields:
+  # Title field (typically required)
+  - name: title
+    type: title                  # Maps to Notion title property
+    description: Page title
+    extraction: |
+      How the LLM should generate/extract the title.
+      Be specific about desired format and length.
+    required: true
+    notion_property: Title       # Notion property name (optional, defaults to name)
+
+  # Date field (typically required)
+  - name: date_created
+    type: date                   # Maps to Notion date property
+    description: When this was captured
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date Created
+
+  # Select field example
+  - name: priority
+    type: select                 # Single-select dropdown
+    description: Priority level
+    extraction: |
+      Infer from urgency language. Look for words like "urgent",
+      "ASAP", "when you get a chance". Default to Medium if unclear.
+    required: false
+    default: Medium              # Default if not extracted
+    options:                     # Must match Notion select options
+      - High
+      - Medium
+      - Low
+    notion_property: Priority
+
+  # Multi-select field example
+  - name: tags
+    type: multi_select           # Multi-select for tags/categories
+    description: Topic tags for organization
+    extraction: Generate 2-5 relevant topic tags based on content
+    required: false
+    notion_property: Tags
+
+  # Rich text field example
+  - name: context
+    type: rich_text              # Free-form text content
+    description: Additional context or notes
+    extraction: |
+      Extract any mentioned context, background information,
+      or related details. Leave empty if none present.
+    required: false
+    notion_property: Context
+
+  # Number field example (uncomment if needed)
+  # - name: estimate_hours
+  #   type: number
+  #   description: Estimated hours to complete
+  #   extraction: Extract any time estimates mentioned
+  #   required: false
+  #   notion_property: Estimate (hrs)
+
+  # Checkbox field example (uncomment if needed)
+  # - name: is_urgent
+  #   type: checkbox
+  #   description: Whether this is urgent
+  #   extraction: Set to true if urgency is expressed
+  #   required: false
+  #   default: false
+  #   notion_property: Urgent
+
+# Notion configuration
+notion:
+  # Database ID - use environment variable for security
+  # The ${VAR} syntax will be interpolated at runtime
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+# Page body template (Jinja2 format)
+# Available variables: all extracted fields plus 'transcript' for raw text
+# Common pattern: structured sections followed by raw transcript
+page_body_template: |
+  ## Summary
+  {{ summary | default("No summary provided.") }}
+
+  ## Context
+  {{ context | default("No additional context provided.") }}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*

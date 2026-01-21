@@ -1,0 +1,156 @@
+# Template: Research
+# ==================
+#
+# Topics to explore, questions to investigate, learning goals.
+# Inquiry language and things to learn about.
+#
+# PRD Reference: Section 7.4
+
+name: research
+display_name: Research
+description: |
+  Topics to explore, questions to investigate, and learning goals.
+  Use for capturing things to learn about, technical deep-dives,
+  curiosity-driven exploration, and investigation notes.
+enabled: true
+
+triggers:
+  patterns:
+    - "I want to learn about"
+    - "need to research"
+    - "look into"
+    - "question about"
+    - "curious about"
+    - "figure out"
+    - "understand"
+    - "how does"
+    - "why does"
+    - "what is"
+    - "explore"
+    - "investigate"
+    - "dig into"
+    - "read up on"
+    - "study"
+    - "learn more about"
+
+  indicators:
+    - inquiry language
+    - learning intent
+    - investigation framing
+    - curiosity expression
+    - knowledge gaps identified
+    - technical exploration
+    - question formulation
+    - research topic identification
+
+fields:
+  - name: title
+    type: title
+    description: Research topic or question
+    extraction: |
+      Generate a concise title that captures the research topic or question.
+      Can be a question ("How do vector databases work?") or topic ("Vector database comparison").
+      Keep it specific enough to be actionable.
+    required: true
+    notion_property: Title
+
+  - name: date
+    type: date
+    description: Capture timestamp
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date
+
+  - name: question_topic
+    type: rich_text
+    description: Core question or area to investigate
+    extraction: |
+      Extract the primary question or topic to investigate.
+      If multiple questions, identify the main one.
+      Frame as a clear question or specific area of inquiry.
+    required: true
+    notion_property: Question/Topic
+
+  - name: why_it_matters
+    type: rich_text
+    description: Context for why this is worth researching
+    extraction: |
+      Extract motivation if stated, otherwise infer from context.
+      Include: why this is relevant now, what problem it might solve,
+      how it connects to current work or interests.
+      Leave empty if motivation is unclear.
+    required: false
+    notion_property: Why It Matters
+
+  - name: initial_thoughts
+    type: rich_text
+    description: Any hypotheses or starting points mentioned
+    extraction: |
+      Extract any initial hypotheses, assumptions, or starting points.
+      Include: current understanding, initial hunches, related knowledge,
+      things that might be relevant.
+      Leave empty if none mentioned.
+    required: false
+    notion_property: Initial Thoughts
+
+  - name: sources_to_check
+    type: rich_text
+    description: Mentioned resources, people to ask, places to look
+    extraction: |
+      Extract any mentioned resources, people to consult, or places to look.
+      Include: websites, books, people, communities, tools, documentation.
+      Leave empty if no sources mentioned.
+    required: false
+    notion_property: Sources to Check
+
+  - name: status
+    type: select
+    description: Research status
+    extraction: |
+      Always set to "To Research" for new items.
+      Status will be updated manually as research progresses.
+    required: false
+    default: To Research
+    options:
+      - To Research
+      - In Progress
+      - Explored
+    notion_property: Status
+
+  - name: tags
+    type: multi_select
+    description: Topic tags for organization
+    extraction: |
+      Generate 2-5 relevant topic tags based on content.
+      Include: domain (AI, databases, business), type (technical, strategic, personal),
+      related projects, priority level, complexity.
+    required: false
+    notion_property: Tags
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Question/Topic
+  {{ question_topic | default("No question or topic extracted.") }}
+
+  {% if why_it_matters %}
+  ## Why It Matters
+  {{ why_it_matters }}
+  {% endif %}
+
+  {% if initial_thoughts %}
+  ## Initial Thoughts
+  {{ initial_thoughts }}
+  {% endif %}
+
+  {% if sources_to_check %}
+  ## Sources to Check
+  {{ sources_to_check }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*

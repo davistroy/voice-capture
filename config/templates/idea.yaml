@@ -1,0 +1,144 @@
+# Template: Idea
+# ==============
+#
+# Brain dumps, speculative concepts, creative possibilities.
+# "What if" thinking and exploration of new possibilities.
+#
+# PRD Reference: Section 7.3
+
+name: idea
+display_name: Idea
+description: |
+  Brain dumps, speculative concepts, and creative possibilities.
+  Use for capturing "what if" thinking, brainstorming, concept exploration,
+  and creative sparks that need to be captured before they're forgotten.
+enabled: true
+
+triggers:
+  patterns:
+    - "idea:"
+    - "what if"
+    - "I'm thinking"
+    - "I wonder if"
+    - "imagine if"
+    - "it would be cool if"
+    - "we could"
+    - "wouldn't it be great"
+    - "brainstorm"
+    - "concept"
+    - "crazy idea"
+    - "random thought"
+    - "just occurred to me"
+    - "what about"
+    - "how about"
+    - "maybe we could"
+
+  indicators:
+    - speculative language
+    - concept exploration
+    - brainstorming mode
+    - creative possibilities
+    - hypothetical scenarios
+    - innovation thinking
+    - possibility exploration
+    - experimental framing
+
+fields:
+  - name: title
+    type: title
+    description: Core concept in 5-10 words
+    extraction: |
+      Capture the essence of the idea in 5-10 words.
+      Should be intriguing and memorable.
+      Example: "AI-powered meeting summarizer" or "Subscription model for consulting"
+    required: true
+    notion_property: Title
+
+  - name: date
+    type: date
+    description: Capture timestamp
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date
+
+  - name: core_concept
+    type: rich_text
+    description: 1-2 sentence distillation of the idea
+    extraction: |
+      Distill the idea into 1-2 clear sentences.
+      Answer: What is the core concept? What would it do or achieve?
+      Write as if explaining to someone unfamiliar with the context.
+    required: true
+    notion_property: Core Concept
+
+  - name: elaboration
+    type: rich_text
+    description: Supporting thoughts, context, implications
+    extraction: |
+      Extract supporting details, context, and implications.
+      Include: why this might work, potential applications,
+      related ideas or inspirations, initial concerns or challenges.
+      Preserve the exploratory tone of the original capture.
+    required: false
+    notion_property: Elaboration
+
+  - name: potential_value
+    type: select
+    description: Estimated potential impact or value
+    extraction: |
+      Assess the potential value based on described impact.
+      - High: game-changer, significant revenue/time savings, strategic advantage
+      - Medium: useful improvement, moderate impact, worth exploring
+      - Low: nice-to-have, small improvement, minor convenience
+      - Unknown: unclear impact, needs more exploration to assess
+      Default to Unknown if not enough information.
+    required: false
+    default: Unknown
+    options:
+      - High
+      - Medium
+      - Low
+      - Unknown
+    notion_property: Potential Value
+
+  - name: next_steps
+    type: rich_text
+    description: Any mentioned follow-ups or actions to explore
+    extraction: |
+      Extract any mentioned next steps or actions to explore.
+      Include: who to talk to, research to do, prototypes to build,
+      validation steps, related resources to check.
+      Leave empty if no next steps are mentioned.
+    required: false
+    notion_property: Next Steps
+
+  - name: tags
+    type: multi_select
+    description: Topic tags for organization
+    extraction: |
+      Generate 2-5 relevant topic tags based on content.
+      Include: domain (tech, business, product), type (feature, process, strategy),
+      related projects, innovation category, potential stakeholders.
+    required: false
+    notion_property: Tags
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Core Concept
+  {{ core_concept | default("No core concept extracted.") }}
+
+  ## Elaboration
+  {{ elaboration | default("No additional elaboration provided.") }}
+
+  {% if next_steps %}
+  ## Next Steps
+  {{ next_steps }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*
