@@ -584,7 +584,7 @@ Use anthropic SDK >=0.18. Model: claude-sonnet-4-20250514. Max tokens: 2048.
 
 ---
 
-#### 2.4 Enhanced Notion Integration
+#### 2.4 Enhanced Notion Integration ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §4.4, PRD §6.5
 **Files Affected:**
@@ -597,7 +597,7 @@ Use anthropic SDK >=0.18. Model: claude-sonnet-4-20250514. Max tokens: 2048.
 Enhance Notion integration to support template-specific property mapping. Build page properties dynamically from extracted fields. Render page body using Jinja2 templates.
 
 **Tasks:**
-1. [ ] Create property mapper for all field types:
+1. [x] Create property mapper for all field types:
    - title → title property
    - date → date property (ISO 8601)
    - select → select property (must match existing options)
@@ -605,23 +605,23 @@ Enhance Notion integration to support template-specific property mapping. Build 
    - rich_text → rich_text blocks
    - number → number property
    - checkbox → checkbox property
-2. [ ] Update create_capture_page() to accept template config:
+2. [x] Update create_capture_page() to accept template config:
    - Map extracted fields to Notion properties
    - Use notion_property name from field config
    - Handle missing optional fields gracefully
-3. [ ] Implement Jinja2 content builder:
+3. [x] Implement Jinja2 content builder:
    - Render page_body_template with classification fields
    - Always include raw transcript section
    - Add processing metadata footer
-4. [ ] Add Type property to distinguish templates in single database
-5. [ ] Write tests for each property type mapping
+4. [x] Add Type property to distinguish templates in single database
+5. [x] Write tests for each property type mapping
 
 **Acceptance Criteria:**
-- [ ] All field types map correctly to Notion
-- [ ] Template-specific pages have correct properties
-- [ ] Page body renders from Jinja2 template
-- [ ] Type property set correctly for filtering
-- [ ] Unknown fields ignored gracefully
+- [x] All field types map correctly to Notion
+- [x] Template-specific pages have correct properties
+- [x] Page body renders from Jinja2 template
+- [x] Type property set correctly for filtering
+- [x] Unknown fields ignored gracefully
 
 ---
 
