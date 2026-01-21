@@ -777,7 +777,7 @@ Scheduled execution via cron (per TDD §8.4): `0 21 * * * /path/to/venv/bin/pyth
 
 ---
 
-#### 3.3 Retry Logic Hardening
+#### 3.3 Retry Logic Hardening ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §5.2, PRD §9
 **Files Affected:**
@@ -789,22 +789,22 @@ Scheduled execution via cron (per TDD §8.4): `0 21 * * * /path/to/venv/bin/pyth
 Harden retry logic across all services. Ensure consistent backoff behavior, proper error categorization, and correct state preservation across retries.
 
 **Tasks:**
-1. [ ] Review and standardize retry config across all services
-2. [ ] Add error categorization:
+1. [x] Review and standardize retry config across all services
+2. [x] Add error categorization:
    - Retryable: timeout, rate limit, server error, network error
    - Non-retryable: invalid input, authentication failure
-3. [ ] Ensure state preserved on retry:
+3. [x] Ensure state preserved on retry:
    - Partial transcription not lost
    - Classification retry uses same transcript
-4. [ ] Add circuit breaker pattern for sustained failures
-5. [ ] Improve error messages in failure_log table
-6. [ ] Test retry behavior under various failure modes
+4. [x] Add circuit breaker pattern for sustained failures
+5. [x] Improve error messages in failure_log table
+6. [x] Test retry behavior under various failure modes
 
 **Acceptance Criteria:**
-- [ ] Retry behavior consistent across all services
-- [ ] Non-retryable errors fail fast
-- [ ] State preserved across retries
-- [ ] Detailed error information logged
+- [x] Retry behavior consistent across all services
+- [x] Non-retryable errors fail fast
+- [x] State preserved across retries
+- [x] Detailed error information logged
 
 ---
 

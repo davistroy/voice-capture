@@ -293,3 +293,19 @@ Implemented Pushover notification integration for system health alerts. Created 
 
 **Summary:**
 Implemented daily health check system for monitoring pipeline health. Created HealthChecker class with connectivity checks for database, OpenAI API, Claude API, Notion API, and Pushover API, plus directory permission validation. Includes stats collection for captures received, completed, failed, and queue depth with failure rate calculation. Added health_check CLI command for standalone execution and scheduled runs via cron. Implements alerting rules for high failure rates, queue backups, and API unreachability.
+
+---
+
+## 2026-01-20
+
+### Work Item 3.3: Retry Logic Hardening
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/pipeline/retry.py`
+- `src/pipeline/orchestrator.py`
+- `tests/test_retry.py`
+
+**Summary:**
+Hardened retry logic across all services with consistent backoff behavior, proper error categorization (retryable vs non-retryable), state preservation across retries, circuit breaker pattern for sustained failures, and improved error messages in failure_log table. Comprehensive unit tests validate retry behavior under various failure modes.
