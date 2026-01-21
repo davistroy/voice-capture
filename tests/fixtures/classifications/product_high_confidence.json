@@ -1,0 +1,18 @@
+{
+  "template": "product",
+  "confidence": 0.89,
+  "reasoning": "Specific feature request for a product being built with clear description and user impact.",
+  "title": "Add filter controls to analytics dashboard",
+  "tags": ["dashboard", "feature", "ux", "analytics"],
+  "fields": {
+    "title": "Add filter controls to analytics dashboard",
+    "date": "2026-01-20",
+    "product_project": "Voice Capture Analytics Dashboard",
+    "type": "Feature",
+    "description": "Users need the ability to filter the analytics dashboard by date range, template type, and tags. Currently the dashboard shows all data without any way to narrow down the view.",
+    "user_impact": "Users with many captures cannot easily find patterns or focus on specific time periods. This is making the dashboard less useful as data grows.",
+    "implementation_notes": "Consider using a filter sidebar or dropdown controls. Date range picker should support presets like 'Last 7 days', 'Last month', etc.",
+    "priority": "Medium",
+    "tags": ["dashboard", "feature", "ux", "analytics"]
+  }
+}

@@ -532,7 +532,7 @@ Create YAML configuration files for all six templates. Each defines trigger patt
 
 ---
 
-#### 2.3 Classification Service
+#### 2.3 Classification Service ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §4.3, PRD §6.4
 **Files Affected:**
@@ -547,37 +547,37 @@ Create YAML configuration files for all six templates. Each defines trigger patt
 Implement LLM classification service using Claude Sonnet. Build dynamic prompts from template definitions, call Claude API, parse JSON response, handle confidence threshold fallback to generic.
 
 **Tasks:**
-1. [ ] Create classification.yaml with global settings:
+1. [x] Create classification.yaml with global settings:
    - confidence_threshold: 0.7
    - fallback_template: general
    - template_priority order
    - system_context for personalization
-2. [ ] Implement prompt builder per TDD §4.3 structure:
+2. [x] Implement prompt builder per TDD §4.3 structure:
    - Dynamic template definitions from loaded YAML
    - Classification rules and overlap handling
    - Transcript metadata (timestamp, duration, device)
    - Response format specification (JSON)
-3. [ ] Create ClassificationService class:
+3. [x] Create ClassificationService class:
    - `classify(transcript, metadata)` → ClassificationResult
    - Build prompt dynamically from templates
    - Call Claude API with appropriate model and max_tokens
    - Parse JSON response
    - Apply confidence threshold logic
-4. [ ] Implement response parser with validation:
+4. [x] Implement response parser with validation:
    - Verify template exists or use fallback
    - Verify confidence in 0.0-1.0 range
    - Verify required fields present
    - Apply defaults for missing optional fields
-5. [ ] Handle invalid JSON with retry using corrective prompt
-6. [ ] Add retry logic for API failures (3x with backoff)
-7. [ ] Write comprehensive tests with fixture responses
+5. [x] Handle invalid JSON with retry using corrective prompt
+6. [x] Add retry logic for API failures (3x with backoff)
+7. [x] Write comprehensive tests with fixture responses
 
 **Acceptance Criteria:**
-- [ ] Classification returns valid template with fields
-- [ ] Confidence < 0.7 falls back to general template
-- [ ] JSON parse errors trigger retry with corrective prompt
-- [ ] All required fields extracted for selected template
-- [ ] Optional fields use defaults when not extracted
+- [x] Classification returns valid template with fields
+- [x] Confidence < 0.7 falls back to general template
+- [x] JSON parse errors trigger retry with corrective prompt
+- [x] All required fields extracted for selected template
+- [x] Optional fields use defaults when not extracted
 
 **Notes:**
 Use anthropic SDK >=0.18. Model: claude-sonnet-4-20250514. Max tokens: 2048.

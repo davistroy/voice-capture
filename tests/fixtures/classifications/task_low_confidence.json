@@ -1,0 +1,13 @@
+{
+  "template": "task",
+  "confidence": 0.55,
+  "reasoning": "The transcript mentions something that might be done, but it's vague and could also be a general observation.",
+  "title": "Maybe check on that thing later",
+  "tags": ["misc"],
+  "fields": {
+    "title": "Maybe check on that thing later",
+    "date_created": "2026-01-20T10:15:00",
+    "priority": "Low",
+    "status": "Not Started"
+  }
+}

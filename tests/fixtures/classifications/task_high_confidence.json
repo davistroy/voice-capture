@@ -1,0 +1,16 @@
+{
+  "template": "task",
+  "confidence": 0.92,
+  "reasoning": "The transcript contains a clear imperative statement with a deadline, indicating a task that needs to be done.",
+  "title": "Review quarterly report by Friday",
+  "tags": ["work", "quarterly-review", "report"],
+  "fields": {
+    "title": "Review quarterly report by Friday",
+    "date_created": "2026-01-20T14:30:22",
+    "due_date": "2026-01-24",
+    "priority": "High",
+    "context": "Quarterly financial review for Q4. Need to prepare analysis before the board meeting.",
+    "status": "Not Started",
+    "tags": ["work", "quarterly-review", "report"]
+  }
+}

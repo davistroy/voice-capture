@@ -1,0 +1,16 @@
+{
+  "template": "general",
+  "confidence": 0.45,
+  "reasoning": "Mixed content that doesn't clearly fit any specific template. Contains observations, potential tasks, and reflections all mixed together.",
+  "title": "Random thoughts about various things",
+  "tags": ["misc", "thoughts"],
+  "fields": {
+    "title": "Random thoughts about various things",
+    "date": "2026-01-20",
+    "duration": 45.5,
+    "device": "Watch",
+    "summary": "A mix of different thoughts including something about a meeting, maybe a task to do, and some general observations about the weather.",
+    "suggested_template": "None",
+    "tags": ["misc", "thoughts"]
+  }
+}

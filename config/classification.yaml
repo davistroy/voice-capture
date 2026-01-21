@@ -1,0 +1,63 @@
+# Global Classification Settings
+# ==============================
+#
+# Controls LLM classification behavior for voice captures.
+# TDD Reference: Section 6.3, Section 4.3
+#
+# These settings affect how transcripts are classified and
+# how the fallback logic operates when confidence is low.
+
+# Minimum confidence required to use a non-general template.
+# If classification confidence is below this threshold, the
+# capture will be assigned to the "general" template.
+confidence_threshold: 0.7
+
+# Template to use when confidence is below threshold or
+# when classification fails entirely.
+fallback_template: general
+
+# When multiple templates have similar confidence scores,
+# prefer templates in this order (first = highest priority).
+# This handles ambiguous cases where content could fit multiple types.
+#
+# Rationale for order:
+# - task: Tasks are actionable, prioritize identification
+# - product: Product work is specific and time-sensitive
+# - research: Research has clear indicators (questions, learning)
+# - idea: Ideas are more free-form but valuable to capture
+# - journal: Journal is a broader catch-all for reflections
+template_priority:
+  - task
+  - product
+  - research
+  - idea
+  - journal
+
+# Claude API model to use for classification
+# Options: claude-sonnet-4-20250514, claude-3-haiku-20240307
+model: claude-sonnet-4-20250514
+
+# Maximum tokens for classification response
+# JSON response is typically 200-500 tokens; 2048 provides headroom
+max_tokens: 2048
+
+# Retry configuration for classification API calls
+max_retries: 3
+base_backoff_seconds: 5.0
+max_backoff_seconds: 300.0
+backoff_multiplier: 2.0
+
+# System context for personalization
+# Provides context about the user to improve classification accuracy
+system_context: |
+  You are classifying voice captures for Troy Davis, a technology consultant.
+  His captures often relate to:
+  - Consulting projects and client work
+  - Personal productivity and daily planning
+  - Technical learning and research
+  - Product ideas and development work
+  - Meeting reflections and follow-ups
+
+  Keep classifications practical and actionable. When in doubt between
+  similar templates, prefer the more specific one (task over journal,
+  product over idea) to make the capture more useful.

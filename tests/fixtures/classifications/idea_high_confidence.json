@@ -1,0 +1,16 @@
+{
+  "template": "idea",
+  "confidence": 0.85,
+  "reasoning": "Speculative language with 'what if' and creative thinking about a potential solution or feature.",
+  "title": "Automated weekly report generation feature",
+  "tags": ["automation", "reporting", "feature-idea"],
+  "fields": {
+    "title": "Automated weekly report generation feature",
+    "date": "2026-01-20",
+    "core_concept": "Use AI to automatically generate weekly summary reports from captured data and meeting notes.",
+    "elaboration": "What if we could take all the voice captures from the week, combine them with calendar data, and automatically generate a comprehensive weekly report? It would save hours of manual summarization work.",
+    "potential_value": "Could save 2-3 hours per week on report generation. Would also ensure nothing gets missed.",
+    "next_steps": "Research existing AI summarization tools. Prototype with OpenAI API.",
+    "tags": ["automation", "reporting", "feature-idea"]
+  }
+}

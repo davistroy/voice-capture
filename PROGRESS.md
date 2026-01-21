@@ -207,3 +207,23 @@ Implemented YAML-based template configuration system for the classification pipe
 
 **Summary:**
 Created YAML configuration files for all six content templates. Each template defines trigger patterns, semantic indicators, field extraction rules, and Notion property mappings per PRD specifications. Templates include journal (personal reflections), task (action items), idea (speculative concepts), research (topics to explore), product (features/bugs), and general (fallback). All templates validated against schema with comprehensive page_body_template definitions.
+
+---
+
+## 2026-01-20
+
+### Work Item 2.3: Classification Service
+
+**Status:** Complete
+
+**Files Changed:**
+- `config/classification.yaml`
+- `src/classification/prompt_builder.py`
+- `src/classification/response_parser.py`
+- `src/classification/classification.py`
+- `src/classification/__init__.py`
+- `tests/test_classification.py`
+- `tests/fixtures/classifications/`
+
+**Summary:**
+Implemented LLM classification service using Claude Sonnet. Created classification.yaml with global settings (confidence threshold, fallback template, template priority). Built prompt_builder.py for dynamic prompt construction from template definitions, response_parser.py for JSON validation and field extraction with fallback handling. ClassificationService class provides classify() method with retry logic, confidence threshold enforcement, and invalid JSON recovery via corrective prompts. Comprehensive unit tests with fixture responses cover all acceptance criteria.
