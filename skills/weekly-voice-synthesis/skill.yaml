@@ -1,0 +1,264 @@
+# Weekly Voice Synthesis Skill
+# Claude Code skill for generating weekly summaries from voice captures
+#
+# Version: 1.0
+# Author: Troy Davis / Stratfield Consulting
+# Date: January 2026
+
+name: weekly-voice-synthesis
+display_name: Weekly Voice Synthesis
+description: |
+  Synthesizes the past week's voice captures into a structured reflection summary.
+  Queries Notion for captures from the last 7 days, groups them by template type,
+  and generates a comprehensive weekly summary with accomplishments, insights,
+  and upcoming priorities.
+
+version: "1.0.0"
+enabled: true
+
+# Invocation configuration
+trigger:
+  type: manual
+  commands:
+    - weekly-voice-synthesis
+    - weekly-synthesis
+    - voice-synthesis
+  aliases:
+    - wvs
+    - weekly
+
+# Prerequisites that must be satisfied before skill execution
+prerequisites:
+  - name: notion_mcp
+    description: Notion MCP must be configured and connected
+    check: mcp_server_connected
+    server_name: notion
+  - name: voice_captures_database
+    description: Voice Captures database must be accessible
+    check: notion_database_accessible
+    database_env_var: NOTION_VOICE_CAPTURES_DB_ID
+  - name: weekly_summaries_database
+    description: Weekly Summaries database must be accessible
+    check: notion_database_accessible
+    database_env_var: NOTION_WEEKLY_SUMMARIES_DB_ID
+
+# Input parameters (all optional with defaults)
+parameters:
+  - name: days
+    type: integer
+    description: Number of days to include in synthesis (default 7)
+    default: 7
+    min: 1
+    max: 30
+  - name: start_date
+    type: date
+    description: Override start date (ISO 8601 format, e.g., 2026-01-14)
+    required: false
+  - name: end_date
+    type: date
+    description: Override end date (ISO 8601 format, e.g., 2026-01-21)
+    required: false
+  - name: save_to_notion
+    type: boolean
+    description: Whether to save the summary to Weekly Summaries database
+    default: true
+  - name: sparse_threshold
+    type: integer
+    description: Minimum captures before prompting for supplemental input
+    default: 3
+
+# Skill behavior specification
+behavior:
+  # Step 1: Query captures from Notion
+  query_captures:
+    description: Retrieve all voice captures within the date range
+    source: notion_mcp
+    database: ${NOTION_VOICE_CAPTURES_DB_ID}
+    filters:
+      - property: Date
+        type: date
+        condition: on_or_after
+        value: "{start_date}"
+      - property: Date
+        type: date
+        condition: on_or_before
+        value: "{end_date}"
+    sorts:
+      - property: Date
+        direction: ascending
+    include_content: true
+
+  # Step 2: Group captures by template type
+  group_by_template:
+    description: Organize captures by their Type property
+    grouping_property: Type
+    expected_types:
+      - Journal
+      - Task
+      - Idea
+      - Research
+      - Product
+      - General
+
+  # Step 3: Handle sparse weeks
+  sparse_week_handling:
+    threshold: "{sparse_threshold}"
+    action: prompt_for_input
+    questions:
+      - "What were your main work focuses this week?"
+      - "Any significant meetings or conversations worth noting?"
+      - "What's carrying over to next week?"
+      - "Any wins or accomplishments not captured in voice notes?"
+      - "Any challenges or blockers you're facing?"
+    note_in_summary: true
+    note_text: "*This summary includes supplemental input provided during synthesis.*"
+
+  # Step 4: Generate synthesis
+  generate_synthesis:
+    description: Create weekly summary using Claude
+    model: claude-sonnet-4-20250514
+    max_tokens: 4096
+    template: weekly_summary_template
+
+  # Step 5: Save to Notion (if enabled)
+  save_summary:
+    description: Create page in Weekly Summaries database
+    condition: "{save_to_notion}"
+    database: ${NOTION_WEEKLY_SUMMARIES_DB_ID}
+    properties:
+      - name: Title
+        type: title
+        value: "Weekly Summary: {start_date} to {end_date}"
+      - name: Week Start
+        type: date
+        value: "{start_date}"
+      - name: Week End
+        type: date
+        value: "{end_date}"
+      - name: Capture Count
+        type: number
+        value: "{total_captures}"
+      - name: Supplemental Input
+        type: checkbox
+        value: "{used_supplemental_input}"
+
+# Output specification
+output:
+  format: markdown
+  sections:
+    - overview
+    - accomplishments
+    - key_activities
+    - challenges_and_blockers
+    - ideas_generated
+    - insights_and_reflections
+    - upcoming_next_week
+    - capture_statistics
+  include_notion_url: true
+
+# Synthesis prompt template
+synthesis_prompt: |
+  You are synthesizing a week's worth of voice captures into a reflection summary for Troy Davis, a technology consultant.
+
+  ## This Week's Captures
+
+  ### Date Range
+  {start_date} to {end_date}
+
+  ### Captures by Type
+
+  {grouped_captures}
+
+  {supplemental_input_section}
+
+  ## Synthesis Guidelines
+
+  1. **Overview**: Write 2-3 sentences capturing the essence of the week
+  2. **Accomplishments**: Extract completed work, wins, and progress from Task and Journal entries
+  3. **Key Activities**: Summarize significant meetings, decisions, and work sessions
+  4. **Challenges & Blockers**: Note any mentioned blockers, frustrations, or unresolved issues
+  5. **Ideas Generated**: Highlight captured ideas with links to original Notion pages
+  6. **Insights & Reflections**: Identify patterns, lessons learned, recurring themes
+  7. **Upcoming / Next Week**: Extract mentioned future plans and infer priorities
+
+  ## Output Format
+
+  Use the following markdown structure:
+
+  # Weekly Summary: {start_date} to {end_date}
+
+  ## Overview
+  [2-3 sentence summary of the week]
+
+  ## Accomplishments
+  - [Bulleted list of completed items and wins]
+
+  ## Key Activities
+  [Narrative paragraph about significant work, meetings, decisions]
+
+  ## Challenges & Blockers
+  - [Bulleted list of challenges, or "None noted this week" if none]
+
+  ## Ideas Generated
+  - [Idea title] - [Brief description] ([Link to Notion page])
+
+  ## Insights & Reflections
+  [Paragraph identifying patterns, lessons, themes]
+
+  ## Upcoming / Next Week
+  - [Bulleted list of upcoming items and priorities]
+
+  ## Capture Statistics
+  | Type | Count |
+  |------|-------|
+  | Journal | {journal_count} |
+  | Task | {task_count} |
+  | Idea | {idea_count} |
+  | Research | {research_count} |
+  | Product | {product_count} |
+  | General | {general_count} |
+  | **Total** | **{total_captures}** |
+
+  ---
+  *Generated: {generation_timestamp}*
+  *Captures from: {start_date} to {end_date}*
+
+# Error handling
+error_handling:
+  no_captures:
+    action: inform_user
+    message: |
+      No voice captures found for the period {start_date} to {end_date}.
+
+      Would you like to:
+      1. Expand the date range?
+      2. Create a summary from verbal input only?
+      3. Skip this week's summary?
+
+  notion_connection_failed:
+    action: abort
+    message: |
+      Unable to connect to Notion. Please verify:
+      1. Notion MCP is configured in your Claude settings
+      2. The MCP server is running and connected
+      3. Your Notion API key has access to the Voice Captures database
+
+  database_not_found:
+    action: abort
+    message: |
+      Voice Captures database not found. Please verify:
+      1. NOTION_VOICE_CAPTURES_DB_ID environment variable is set
+      2. The database ID is correct
+      3. Your Notion integration has access to the database
+
+# Metadata
+metadata:
+  author: Troy Davis
+  created: 2026-01-21
+  updated: 2026-01-21
+  tags:
+    - synthesis
+    - weekly-review
+    - notion
+    - voice-capture
+  documentation: skills/weekly-voice-synthesis/README.md

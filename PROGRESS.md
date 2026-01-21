@@ -342,3 +342,18 @@ Implemented CLI commands for manual intervention in the voice capture pipeline. 
 
 **Summary:**
 Integrated notification service into the pipeline orchestrator. Added NotificationService as an orchestrator dependency, implemented failure notifications after max retries are exhausted with relevant context (filename, error, stage), included Notion page URL in notifications when available, and ensured no duplicate notifications for the same failure. Comprehensive tests validate notification integration.
+
+---
+
+## 2026-01-20
+
+### Work Item 4.1: Weekly Synthesis Skill Definition
+
+**Status:** Complete
+
+**Files Changed:**
+- `skills/weekly-voice-synthesis/skill.yaml`
+- `skills/weekly-voice-synthesis/README.md`
+
+**Summary:**
+Created Claude skill definition for weekly voice capture synthesis. Includes skill.yaml with proper frontmatter (name, triggers, prerequisites for Notion MCP), detailed behavioral documentation (query captures from last 7 days, group by template type, handle sparse weeks, generate synthesis), and README.md with comprehensive usage instructions.

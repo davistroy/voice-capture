@@ -901,7 +901,7 @@ Integrate notification service into pipeline orchestrator. Send notifications on
 
 ### Work Items
 
-#### 4.1 Weekly Synthesis Skill Definition
+#### 4.1 Weekly Synthesis Skill Definition ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §13.1, PRD §8.1
 **Files Affected:**
@@ -912,21 +912,21 @@ Integrate notification service into pipeline orchestrator. Send notifications on
 Define Claude skill for weekly voice capture synthesis. Skill is invoked manually via Claude Code or Claude Desktop with Notion MCP configured.
 
 **Tasks:**
-1. [ ] Create skill definition YAML:
+1. [x] Create skill definition YAML:
    - Name: weekly-voice-synthesis
    - Trigger: manual invocation
    - Prerequisites: Notion MCP configured
-2. [ ] Document skill behavior:
+2. [x] Document skill behavior:
    - Query captures from last 7 days
    - Group by template type
    - Handle sparse weeks
    - Generate synthesis
-3. [ ] Create README with usage instructions
+3. [x] Create README with usage instructions
 
 **Acceptance Criteria:**
-- [ ] Skill definition follows Claude skill format
-- [ ] Prerequisites clearly documented
-- [ ] Usage instructions are clear
+- [x] Skill definition follows Claude skill format
+- [x] Prerequisites clearly documented
+- [x] Usage instructions are clear
 
 ---
 
