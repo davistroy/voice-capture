@@ -86,3 +86,21 @@ Implemented Python dataclasses for domain models: ProcessingStatus enum, Device 
 
 **Summary:**
 Implemented folder watcher service using Python watchdog library. Monitors inbox directory for new audio files, validates format via magic bytes, parses filenames for metadata (timestamp, device), queues for processing, and moves files to processing directory. Includes comprehensive unit tests with temp directories.
+
+---
+
+## 2026-01-20
+
+### Work Item 1.5: Transcription Service
+
+**Status:** Complete
+
+**Files Changed:**
+- `src/transcription/__init__.py`
+- `src/transcription/base.py`
+- `src/transcription/whisper_api.py`
+- `src/transcription/service.py`
+- `tests/test_transcription.py`
+
+**Summary:**
+Implemented transcription service with abstract backend interface (Strategy pattern) and OpenAI Whisper API implementation. Includes retry logic with exponential backoff and jitter, proper error handling for different failure modes (timeout, rate limit, invalid audio, server errors), and comprehensive unit tests with mocked API client.

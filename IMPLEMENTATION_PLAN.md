@@ -207,7 +207,7 @@ Use Observer pattern from watchdog. Test with actual audio file magic bytes, not
 
 ---
 
-#### 1.5 Transcription Service
+#### 1.5 Transcription Service ✅ Completed 2026-01-20
 
 **Requirement Refs:** TDD §4.2, PRD §6.3
 **Files Affected:**
@@ -223,31 +223,31 @@ Use Observer pattern from watchdog. Test with actual audio file magic bytes, not
 Implement transcription service with abstract backend interface (Strategy pattern) and OpenAI Whisper API implementation. Include retry logic with exponential backoff. Design allows future swap to local Whisper.
 
 **Tasks:**
-1. [ ] Create TranscriptionBackend abstract base class per TDD §4.2
-2. [ ] Implement WhisperAPIBackend with OpenAI SDK
+1. [x] Create TranscriptionBackend abstract base class per TDD §4.2
+2. [x] Implement WhisperAPIBackend with OpenAI SDK
    - Use `response_format="verbose_json"` for duration and segments
    - Handle language detection or force English
    - Parse response into TranscriptionResult
-3. [ ] Create TranscriptionService facade with retry logic
+3. [x] Create TranscriptionService facade with retry logic
    - Exponential backoff: 5s base, 2x multiplier, 300s max
    - 3 max retries
    - 10% jitter on backoff
-4. [ ] Implement error handling per TDD §4.2 table:
+4. [x] Implement error handling per TDD §4.2 table:
    - Timeout → retry
    - Rate limit (429) → respect Retry-After header
    - Invalid audio (400) → fail immediately
    - Server error (5xx) → retry
    - Network error → retry
-5. [ ] Create test fixtures with sample API responses
-6. [ ] Write unit tests with mocked API client
+5. [x] Create test fixtures with sample API responses
+6. [x] Write unit tests with mocked API client
 
 **Acceptance Criteria:**
-- [ ] Successful transcription returns complete TranscriptionResult
-- [ ] Retry logic follows exponential backoff with jitter
-- [ ] Invalid audio files fail immediately without retry
-- [ ] Rate limits respected via Retry-After header
-- [ ] Abstract interface allows backend swap without code changes
-- [ ] 120 second timeout for long recordings
+- [x] Successful transcription returns complete TranscriptionResult
+- [x] Retry logic follows exponential backoff with jitter
+- [x] Invalid audio files fail immediately without retry
+- [x] Rate limits respected via Retry-After header
+- [x] Abstract interface allows backend swap without code changes
+- [x] 120 second timeout for long recordings
 
 **Notes:**
 Use openai SDK >=1.0. Skip confidence tracking per TDD decision—Whisper is accurate enough.
