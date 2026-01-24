@@ -363,6 +363,7 @@ class HttpUploadServer:
                 original_path=str(final_path),
                 device=device.value,
                 current_path=str(final_path),
+                source="http",
             )
 
             logger.info(
