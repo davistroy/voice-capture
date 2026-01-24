@@ -20,6 +20,7 @@ from typing import Optional
 
 from src.config.settings import get_settings, Settings
 from src.db.database import Database
+from src.http.server import HttpUploadServer
 from src.notion.client import NotionService
 from src.pipeline.orchestrator import PipelineOrchestrator
 from src.pipeline.retry import RetryConfig
@@ -107,6 +108,7 @@ class VoiceCaptureApp:
         self._notion: Optional[NotionService] = None
         self._watcher: Optional[FolderWatcher] = None
         self._orchestrator: Optional[PipelineOrchestrator] = None
+        self._http_server: Optional[HttpUploadServer] = None
         self._shutdown_event = asyncio.Event()
         self._processing_task: Optional[asyncio.Task] = None
 
@@ -199,6 +201,22 @@ class VoiceCaptureApp:
         self._watcher.on_new_capture(self._on_new_capture)
         logger.info("Folder watcher initialized: watching=%s", self.settings.paths.inbox)
 
+        # Initialize HTTP server if enabled
+        if self.settings.http.enabled:
+            self._http_server = HttpUploadServer(
+                settings=self.settings.http,
+                paths=self.settings.paths,
+                db=self._db,
+                file_validator=self._watcher._validator,
+                orchestrator=self._orchestrator,
+            )
+            logger.info("HTTP upload server initialized: host=%s, port=%d, auth=%s",
+                        self.settings.http.host,
+                        self.settings.http.port,
+                        "enabled" if self.settings.http.api_key else "disabled")
+        else:
+            logger.info("HTTP upload server: disabled")
+
         logger.info("All services initialized successfully")
 
     async def _on_new_capture(self, event: NewCaptureEvent) -> None:
@@ -228,7 +246,7 @@ class VoiceCaptureApp:
     async def run(self) -> None:
         """Run the main application loop.
 
-        Starts the folder watcher and processes pending items.
+        Starts the folder watcher and HTTP server (if enabled), processes pending items.
         Runs until shutdown signal is received.
         """
         if not self._watcher or not self._orchestrator:
@@ -239,6 +257,13 @@ class VoiceCaptureApp:
         # Start folder watcher
         await self._watcher.start()
         logger.info("Folder watcher started")
+
+        # Start HTTP server if enabled
+        if self._http_server:
+            await self._http_server.start()
+            logger.info("HTTP upload server listening on http://%s:%d",
+                        self.settings.http.host,
+                        self.settings.http.port)
 
         # Process any pending items from previous runs
         await self._process_pending_on_startup()
@@ -300,7 +325,7 @@ class VoiceCaptureApp:
     async def shutdown(self) -> None:
         """Gracefully shutdown all services.
 
-        Stops the watcher, waits for in-progress work to complete,
+        Stops the HTTP server, watcher, waits for in-progress work to complete,
         and closes all connections.
         """
         logger.info("Initiating graceful shutdown...")
@@ -308,7 +333,12 @@ class VoiceCaptureApp:
         # Signal main loop to stop
         self._shutdown_event.set()
 
-        # Stop folder watcher first (prevents new work)
+        # Stop HTTP server first (drains in-flight requests)
+        if self._http_server:
+            logger.info("Stopping HTTP upload server...")
+            await self._http_server.stop()
+
+        # Stop folder watcher (prevents new work)
         if self._watcher:
             logger.info("Stopping folder watcher...")
             await self._watcher.stop()
