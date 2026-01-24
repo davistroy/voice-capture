@@ -1148,19 +1148,524 @@ Generate weekly summary using Claude and store in Weekly Summaries Notion databa
 
 ---
 
-## Implementation Complete
+## Phase 5: HTTP Upload Endpoint (Alternative Ingestion)
 
-**All 4 phases and 24 work items completed.**
+**Estimated Effort:** ~45,000 tokens (including testing/fixes)
+**Dependencies:** Phase 1 complete (core pipeline infrastructure)
+**Parallelizable:** Yes - configuration, server, and documentation can be developed in parallel
+**Exit Criteria:** iOS Shortcut can POST audio directly to server via Tailscale, file processed within 10 seconds
 
-| Phase | Work Items | Completed |
-|-------|------------|-----------|
-| Phase 1: Core Pipeline (MVP) | 9 items (1.1-1.9) | 2026-01-20 |
-| Phase 2: Classification & Templates | 5 items (2.1-2.5) | 2026-01-20 |
-| Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | 2026-01-21 |
-| Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | 2026-01-20 |
+### Goals
+
+- Provide alternative to Google Drive/rclone sync for lower latency
+- Enable direct iOS → server uploads via Tailscale private network
+- Eliminate 60-second polling delay for immediate processing
+- Maintain backward compatibility (rclone flow unchanged)
+
+### Background
+
+The current architecture relies on Google Drive as an intermediary:
+```
+iOS → Google Drive → rclone (60s poll) → inbox/ → watcher → pipeline
+```
+
+This phase adds a direct HTTP upload path:
+```
+iOS → HTTP POST (Tailscale) → processing/ → pipeline → response
+```
+
+**Key Benefits:**
+- Immediate processing (no sync delay)
+- Instant feedback to iOS Shortcut (success/failure + Notion URL)
+- No cloud dependency for capture flow
+- Works offline on local network
+
+### Work Items
+
+#### 5.1 HTTP Server Configuration
+
+**Requirement Refs:** TDD §6.1, TDD §6.2
+**Files Affected:**
+- `src/config/settings.py` (modify)
+- `config/settings.yaml` (modify)
+- `.env.example` (modify)
+
+**Description:**
+Add configuration settings for the HTTP upload server following existing Pydantic patterns. The server should be disabled by default to avoid breaking changes.
+
+**Tasks:**
+1. [ ] Create `HttpServerSettings` class in settings.py:
+   ```python
+   class HttpServerSettings(BaseModel):
+       enabled: bool = False
+       host: str = "0.0.0.0"
+       port: int = 8080
+       api_key: str | None = None
+       max_upload_mb: int = 100
+       request_timeout_seconds: int = 60
+       cors_origins: list[str] = []
+   ```
+2. [ ] Add `http: HttpServerSettings` to main `Settings` class
+3. [ ] Add HTTP section to `config/settings.yaml`:
+   ```yaml
+   http:
+     enabled: false
+     port: 8080
+     # api_key: optional-shared-secret
+   ```
+4. [ ] Add HTTP environment variables to `.env.example`:
+   ```bash
+   HTTP_ENABLED=true
+   HTTP_PORT=8080
+   HTTP_API_KEY=optional-secret
+   ```
+5. [ ] Write unit tests for settings loading with HTTP config
+
+**Acceptance Criteria:**
+- [ ] HTTP settings load correctly from environment and YAML
+- [ ] Disabled by default (no breaking change)
+- [ ] Settings validation rejects invalid port/size values
+- [ ] Existing settings tests still pass
+
+---
+
+#### 5.2 HTTP Server Core Module
+
+**Requirement Refs:** TDD §4.1 (watcher patterns), TDD §5.1 (pipeline integration)
+**Files Affected:**
+- `src/http/__init__.py` (create)
+- `src/http/server.py` (create)
+- `src/http/responses.py` (create)
+- `tests/http/__init__.py` (create)
+- `tests/http/test_server.py` (create)
+
+**Description:**
+Create the HTTP server module using aiohttp (already a dependency). The server manages lifecycle, routing, and graceful shutdown. Uses dependency injection for testability.
+
+**Tasks:**
+1. [ ] Create `src/http/__init__.py` with module exports
+2. [ ] Implement `HttpUploadServer` class in `server.py`:
+   ```python
+   class HttpUploadServer:
+       def __init__(
+           self,
+           settings: HttpServerSettings,
+           paths: PathsSettings,
+           db: Database,
+           file_validator: FileValidator,
+           orchestrator: PipelineOrchestrator,
+       ): ...
+
+       async def start(self) -> None: ...
+       async def stop(self) -> None: ...
+   ```
+3. [ ] Create aiohttp Application with routes:
+   - `POST /api/v1/capture` - Upload audio file
+   - `GET /api/v1/capture/{id}` - Check capture status
+   - `GET /health` - Health check endpoint
+4. [ ] Implement graceful shutdown (drain connections)
+5. [ ] Create `responses.py` with standardized JSON response helpers:
+   ```python
+   def success_response(capture_id, status, notion_url=None, processing_time_ms=None)
+   def error_response(error_code, message, capture_id=None)
+   ```
+6. [ ] Write unit tests for server lifecycle
+
+**Acceptance Criteria:**
+- [ ] Server starts and stops cleanly
+- [ ] Routes respond correctly
+- [ ] Health endpoint returns server status
+- [ ] Graceful shutdown waits for in-flight requests
+
+---
+
+#### 5.3 Upload Handler Implementation
+
+**Requirement Refs:** TDD §4.1 (file validation), TDD §5.1 (pipeline)
+**Files Affected:**
+- `src/http/handlers.py` (create)
+- `tests/http/test_handlers.py` (create)
+- `tests/fixtures/http/` (create directory)
+
+**Description:**
+Implement the upload handler that receives audio files, validates them, and triggers the processing pipeline. Supports both synchronous (wait for result) and asynchronous (immediate return) modes.
+
+**Tasks:**
+1. [ ] Implement `handle_upload()` function:
+   ```python
+   async def handle_upload(request: web.Request) -> web.Response:
+       # 1. Parse multipart form data
+       # 2. Extract audio file and optional metadata (device)
+       # 3. Validate file via FileValidator (reuse existing)
+       # 4. Generate filename: YYYYMMDD_HHMMSS_http.m4a
+       # 5. Write to processing/ directory (atomic via temp file)
+       # 6. Insert into database (status=pending)
+       # 7. If sync mode: await orchestrator.process_capture()
+       # 8. Return JSON response
+   ```
+2. [ ] Support `?wait=true` query param for sync processing (default: true)
+3. [ ] Support `device` form field (watch/phone/http, default: http)
+4. [ ] Implement `handle_status()` for checking capture status:
+   ```python
+   async def handle_status(request: web.Request) -> web.Response:
+       # Return capture status, template, notion_url if complete
+   ```
+5. [ ] Implement atomic file write (write to temp, then rename)
+6. [ ] Handle cleanup on failure (remove file, remove DB entry)
+7. [ ] Create test fixtures for multipart upload simulation
+8. [ ] Write comprehensive handler tests
+
+**Acceptance Criteria:**
+- [ ] Valid audio files accepted and processed
+- [ ] Invalid files rejected with clear error message
+- [ ] Sync mode returns Notion URL on success
+- [ ] Async mode returns capture_id immediately
+- [ ] Failed uploads cleaned up (no orphaned files/records)
+- [ ] Large files (up to max_upload_mb) handled correctly
+
+**API Request/Response Examples:**
+
+```http
+POST /api/v1/capture?wait=true HTTP/1.1
+Content-Type: multipart/form-data; boundary=----boundary
+
+------boundary
+Content-Disposition: form-data; name="audio"; filename="recording.m4a"
+Content-Type: audio/mp4
+
+[binary audio data]
+------boundary
+Content-Disposition: form-data; name="device"
+
+watch
+------boundary--
+```
+
+**Success Response (sync):**
+```json
+{
+  "success": true,
+  "capture_id": 42,
+  "status": "complete",
+  "template": "task",
+  "notion_url": "https://notion.so/page-id",
+  "processing_time_ms": 3450
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "invalid_audio_format",
+  "message": "File must be M4A, MP3, WAV, or WEBM",
+  "capture_id": null
+}
+```
+
+---
+
+#### 5.4 Authentication Middleware
+
+**Requirement Refs:** TDD §11 (Security)
+**Files Affected:**
+- `src/http/middleware.py` (create)
+- `tests/http/test_middleware.py` (create)
+
+**Description:**
+Implement optional API key authentication middleware. Tailscale already provides network-level security, but API key adds defense-in-depth.
+
+**Tasks:**
+1. [ ] Create `api_key_middleware` for aiohttp:
+   ```python
+   @web.middleware
+   async def api_key_middleware(request, handler):
+       # Skip auth for health endpoint
+       # Check X-API-Key header if api_key configured
+       # Return 401 if missing/invalid
+   ```
+2. [ ] Create `error_middleware` for consistent error responses:
+   ```python
+   @web.middleware
+   async def error_middleware(request, handler):
+       # Catch exceptions, return JSON error responses
+       # Log errors appropriately
+   ```
+3. [ ] Create `request_logging_middleware` for access logs
+4. [ ] Write middleware tests
+
+**Acceptance Criteria:**
+- [ ] Requests without API key rejected (when configured)
+- [ ] Health endpoint accessible without auth
+- [ ] Invalid API key returns 401 with JSON body
+- [ ] Errors return consistent JSON format
+- [ ] All requests logged with timing
+
+---
+
+#### 5.5 Main Application Integration
+
+**Requirement Refs:** TDD §8.2
+**Files Affected:**
+- `src/main.py` (modify)
+
+**Description:**
+Integrate the HTTP server into the main application lifecycle. The server runs alongside the folder watcher when enabled.
+
+**Tasks:**
+1. [ ] Add HTTP server initialization in `VoiceCaptureApp.initialize()`:
+   ```python
+   if self.settings.http.enabled:
+       self._http_server = HttpUploadServer(
+           settings=self.settings.http,
+           paths=self.settings.paths,
+           db=self._db,
+           file_validator=self._watcher._validator,
+           orchestrator=self._orchestrator,
+       )
+   ```
+2. [ ] Start HTTP server in `run()` alongside watcher:
+   ```python
+   tasks = []
+   tasks.append(self._watcher.start())
+   if self._http_server:
+       tasks.append(self._http_server.start())
+       logger.info(f"HTTP server listening on {self.settings.http.host}:{self.settings.http.port}")
+   await asyncio.gather(*tasks)
+   ```
+3. [ ] Add HTTP server shutdown in `shutdown()`:
+   ```python
+   if self._http_server:
+       await self._http_server.stop()
+   ```
+4. [ ] Add startup log message indicating HTTP status
+5. [ ] Update integration tests
+
+**Acceptance Criteria:**
+- [ ] HTTP server starts when enabled
+- [ ] HTTP server does not start when disabled
+- [ ] Graceful shutdown stops HTTP server
+- [ ] Watcher and HTTP server run concurrently
+- [ ] Startup logs show HTTP server status
+
+---
+
+#### 5.6 Docker & Deployment Updates
+
+**Requirement Refs:** TDD §8.5
+**Files Affected:**
+- `docker-compose.yml` (modify)
+- `Dockerfile` (verify no changes needed)
+- `docs/DEPLOYMENT_GUIDE.md` (modify)
+
+**Description:**
+Update Docker configuration to expose HTTP port and document Tailscale integration options.
+
+**Tasks:**
+1. [ ] Update `docker-compose.yml`:
+   ```yaml
+   services:
+     voice-capture:
+       ports:
+         - "${HTTP_PORT:-8080}:8080"
+       environment:
+         - HTTP_ENABLED=${HTTP_ENABLED:-false}
+         - HTTP_PORT=${HTTP_PORT:-8080}
+         - HTTP_API_KEY=${HTTP_API_KEY:-}
+   ```
+2. [ ] Document Tailscale integration options in DEPLOYMENT_GUIDE.md:
+   - Option A: Tailscale on host, container uses host network
+   - Option B: Tailscale sidecar container
+   - Option C: Tailscale installed in voice-capture container
+3. [ ] Add HTTP endpoint setup section to deployment guide
+4. [ ] Document firewall considerations (Tailscale-only access)
+
+**Acceptance Criteria:**
+- [ ] HTTP port exposed in docker-compose
+- [ ] Environment variables documented
+- [ ] Tailscale integration options documented
+- [ ] Security considerations documented
+
+---
+
+#### 5.7 iOS Shortcut Documentation
+
+**Requirement Refs:** PRD §6.1
+**Files Affected:**
+- `docs/IOS_SHORTCUT_HTTP.md` (create)
+- `docs/DEPLOYMENT_GUIDE.md` (modify - add reference)
+
+**Description:**
+Create comprehensive documentation for setting up iOS Shortcuts to POST directly to the HTTP endpoint via Tailscale.
+
+**Tasks:**
+1. [ ] Create `docs/IOS_SHORTCUT_HTTP.md` with:
+   - Prerequisites (Tailscale on iOS, server Tailscale hostname)
+   - Step-by-step Shortcut creation:
+     1. Receive input from Share Sheet / Quick Action
+     2. Get Contents of URL (POST to Tailscale hostname)
+     3. Parse JSON response
+     4. Show notification with result
+   - Troubleshooting section
+   - Screenshots or detailed action descriptions
+2. [ ] Document both sync and async modes
+3. [ ] Include error handling in Shortcut (retry on failure)
+4. [ ] Add Apple Watch complication notes
+5. [ ] Update DEPLOYMENT_GUIDE.md to reference new doc
+
+**Shortcut Flow:**
+```
+Shortcut: "Voice Capture (HTTP)"
+
+1. [Receive] Audio file from Just Press Record
+
+2. [Get Contents of URL]
+   URL: http://[tailscale-hostname]:8080/api/v1/capture?wait=true
+   Method: POST
+   Headers:
+     X-API-Key: [your-api-key]  (if configured)
+   Request Body: Form
+     audio: [Shortcut Input]
+     device: "watch" or "phone"
+
+3. [Get Dictionary Value] "success" from [Response]
+
+4. [If] success equals true
+   [Get Dictionary Value] "notion_url" from [Response]
+   [Show Notification] "Captured!" with URL
+   [Vibrate Device]
+   [Otherwise]
+   [Get Dictionary Value] "message" from [Response]
+   [Show Notification] "Failed: [message]"
+```
+
+**Acceptance Criteria:**
+- [ ] Documentation is clear and complete
+- [ ] Step-by-step instructions are accurate
+- [ ] Troubleshooting covers common issues
+- [ ] Both sync and async modes documented
+
+---
+
+#### 5.8 CLI Status Command Enhancement
+
+**Requirement Refs:** TDD §12
+**Files Affected:**
+- `src/cli/queue_status.py` (modify)
+
+**Description:**
+Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
+
+**Tasks:**
+1. [ ] Add HTTP server status to queue_status output:
+   ```
+   HTTP Server: Running on 0.0.0.0:8080 (auth: enabled)
+   Recent HTTP uploads: 5 in last hour
+   ```
+2. [ ] Add `--http` flag to show HTTP-specific stats
+3. [ ] Track upload source in database (add `source` column: watcher/http)
+4. [ ] Write tests for enhanced output
+
+**Acceptance Criteria:**
+- [ ] HTTP status shown in queue_status
+- [ ] Can filter by upload source
+- [ ] Backward compatible (source defaults to 'watcher')
+
+---
+
+### Phase 5 Testing Requirements
+
+- [ ] Unit tests for HTTP server lifecycle
+- [ ] Unit tests for upload handler (success, validation failure, processing error)
+- [ ] Unit tests for authentication middleware
+- [ ] Unit tests for error handling middleware
+- [ ] Integration test: multipart upload → database insert → pipeline trigger
+- [ ] Integration test: sync mode returns Notion URL
+- [ ] Integration test: async mode returns capture_id
+- [ ] Integration test: authentication rejection
+- [ ] Manual test: iOS Shortcut → Tailscale → Server → Notion page
+
+### Phase 5 Completion Checklist
+
+- [ ] All work items complete
+- [ ] All tests passing
+- [ ] HTTP server starts and accepts uploads
+- [ ] iOS Shortcut documentation complete
+- [ ] Docker configuration updated
+- [ ] Backward compatible (rclone flow unchanged)
+- [ ] Manual test: full iOS → HTTP → Notion flow
+
+---
+
+## Parallel Work Opportunities (Updated)
+
+| Work Item | Can Run With | Notes |
+|-----------|--------------|-------|
+| 5.1 Configuration | 5.7 Documentation | No dependencies |
+| 5.2 Server Core | 5.1 Configuration | Needs config types |
+| 5.3 Upload Handler | 5.2 Server Core | Needs server infrastructure |
+| 5.4 Middleware | 5.2 Server Core | Independent of handler |
+| 5.5 Main Integration | 5.2, 5.3, 5.4 | Needs all server components |
+| 5.6 Docker Updates | 5.1 Configuration | Only needs config names |
+| 5.7 iOS Docs | 5.1-5.5 | Can draft early, finalize after testing |
+| 5.8 CLI Enhancement | 5.5 Main Integration | Needs running server |
+
+---
+
+## Risk Mitigation (Updated)
+
+| Risk | Likelihood | Impact | Mitigation Strategy |
+|------|------------|--------|---------------------|
+| Tailscale connectivity issues | Low | Medium | Document troubleshooting; rclone fallback always works |
+| Large file upload timeouts | Medium | Low | Configurable timeout; async mode available |
+| iOS Shortcut limitations | Low | Medium | Test thoroughly; document workarounds |
+| Security exposure | Low | High | Tailscale provides network security; optional API key |
+| Breaking existing flow | Low | High | HTTP disabled by default; extensive testing |
+
+---
+
+## Implementation Status
+
+**Phases 1-4:** Complete (2026-01-21)
+**Phase 5:** Not Started
+
+| Phase | Work Items | Status |
+|-------|------------|--------|
+| Phase 1: Core Pipeline (MVP) | 9 items (1.1-1.9) | ✅ Complete 2026-01-20 |
+| Phase 2: Classification & Templates | 5 items (2.1-2.5) | ✅ Complete 2026-01-20 |
+| Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | ✅ Complete 2026-01-21 |
+| Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | ✅ Complete 2026-01-20 |
+| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | ⬜ Not Started |
+
+---
+
+## Appendix: Requirement Traceability (Updated)
+
+| Requirement | Source | Phase | Work Item |
+|-------------|--------|-------|-----------|
+| Fire-and-forget capture | PRD §2 | 1 | All |
+| SQLite state management | TDD §3.1 | 1 | 1.2 |
+| Watchdog folder monitoring | TDD §4.1 | 1 | 1.4 |
+| Whisper API transcription | TDD §4.2 | 1 | 1.5 |
+| Notion page creation | TDD §4.4 | 1 | 1.6 |
+| State machine pipeline | TDD §5.1 | 1 | 1.7 |
+| Docker deployment | TDD §8.5 | 1 | 1.1 |
+| YAML template config | TDD §3.3 | 2 | 2.1 |
+| 6 content templates | PRD §7 | 2 | 2.2 |
+| Claude classification | TDD §4.3 | 2 | 2.3 |
+| Template field extraction | PRD §6.4 | 2 | 2.3, 2.4 |
+| Pushover notifications | TDD §4.5 | 3 | 3.1 |
+| Daily health check | TDD §10.3 | 3 | 3.2 |
+| Manual retry CLI | TDD §12 | 3 | 3.4 |
+| Weekly synthesis | TDD §13 | 4 | All |
+| Sparse week handling | PRD §8.3 | 4 | 4.4 |
+| **HTTP upload endpoint** | **User request** | **5** | **5.1-5.8** |
+| **Alternative to rclone** | **User request** | **5** | **5.2, 5.3** |
+| **Tailscale integration** | **User request** | **5** | **5.6, 5.7** |
+| **Immediate processing** | **User request** | **5** | **5.3, 5.5** |
 
 ---
 
 *Implementation plan generated by Claude on 2026-01-20*
-*Implementation completed: 2026-01-21*
-*Source documents: docs/PRD.md v1.0, docs/TDD.md v1.0*
+*Phase 5 added: 2026-01-24*
+*Source documents: docs/PRD.md v1.0, docs/TDD.md v1.0, User requirements*
