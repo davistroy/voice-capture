@@ -1366,7 +1366,7 @@ watch
 
 ---
 
-#### 5.4 Authentication Middleware
+#### 5.4 Authentication Middleware ✅ Completed 2026-01-24
 
 **Requirement Refs:** TDD §11 (Security)
 **Files Affected:**
@@ -1377,7 +1377,7 @@ watch
 Implement optional API key authentication middleware. Tailscale already provides network-level security, but API key adds defense-in-depth.
 
 **Tasks:**
-1. [ ] Create `api_key_middleware` for aiohttp:
+1. [x] Create `api_key_middleware` for aiohttp:
    ```python
    @web.middleware
    async def api_key_middleware(request, handler):
@@ -1385,22 +1385,22 @@ Implement optional API key authentication middleware. Tailscale already provides
        # Check X-API-Key header if api_key configured
        # Return 401 if missing/invalid
    ```
-2. [ ] Create `error_middleware` for consistent error responses:
+2. [x] Create `error_middleware` for consistent error responses:
    ```python
    @web.middleware
    async def error_middleware(request, handler):
        # Catch exceptions, return JSON error responses
        # Log errors appropriately
    ```
-3. [ ] Create `request_logging_middleware` for access logs
-4. [ ] Write middleware tests
+3. [x] Create `request_logging_middleware` for access logs
+4. [x] Write middleware tests
 
 **Acceptance Criteria:**
-- [ ] Requests without API key rejected (when configured)
-- [ ] Health endpoint accessible without auth
-- [ ] Invalid API key returns 401 with JSON body
-- [ ] Errors return consistent JSON format
-- [ ] All requests logged with timing
+- [x] Requests without API key rejected (when configured)
+- [x] Health endpoint accessible without auth
+- [x] Invalid API key returns 401 with JSON body
+- [x] Errors return consistent JSON format
+- [x] All requests logged with timing
 
 ---
 
@@ -1636,7 +1636,7 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 | Phase 2: Classification & Templates | 5 items (2.1-2.5) | ✅ Complete 2026-01-20 |
 | Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | ✅ Complete 2026-01-21 |
 | Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | ✅ Complete 2026-01-20 |
-| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1-5.3 complete) |
+| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1-5.4 complete) |
 
 ---
 
