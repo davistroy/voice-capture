@@ -1628,10 +1628,848 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 
 ---
 
+## Phase 6: Technical Debt Remediation
+
+**Estimated Effort:** ~35,000 tokens (including testing/fixes)
+**Dependencies:** None (all items are refactoring of existing, working code)
+**Parallelizable:** Yes - most work items can be developed independently
+**Exit Criteria:** All identified technical debt issues resolved, existing tests passing
+
+### Goals
+
+- Improve code maintainability by reducing god classes
+- Eliminate duplicate implementations (DRY principle)
+- Fix encapsulation violations
+- Add interface abstractions for better testability
+- Enhance security posture with secret masking
+- Ensure reproducible builds with dependency lock file
+
+### Background
+
+An architectural review identified 3 high-priority, 6 medium-priority, and 2 low-priority technical debt items. This phase addresses all identified issues without changing system behavior—pure refactoring with comprehensive testing.
+
+**Issue Severity Summary:**
+| Severity | Count | Focus Area |
+|----------|-------|------------|
+| High | 3 | God classes, encapsulation breach |
+| Medium | 6 | DRY violations, missing abstractions, security |
+| Low | 2 | Minor duplication, consistency |
+
+### Work Items
+
+#### 6.1 Extract Shared Backoff Utility [M1 - Medium Priority]
+
+**Issue Ref:** M1 - Duplicate Backoff Logic
+**Severity:** Medium
+**Files Affected:**
+- `src/common/__init__.py` (create)
+- `src/common/backoff.py` (create)
+- `src/transcription/service.py` (modify)
+- `src/classification/classification.py` (modify)
+- `src/notion/client.py` (modify)
+- `src/synthesis/notion_query.py` (modify)
+- `src/synthesis/notion_writer.py` (modify)
+- `src/pipeline/retry.py` (modify - keep as canonical, export)
+- `tests/common/__init__.py` (create)
+- `tests/common/test_backoff.py` (create)
+
+**Description:**
+Exponential backoff with jitter is implemented identically in 6 different modules. Extract to a single shared utility in `src/common/backoff.py` and refactor all modules to use it.
+
+**Current Duplicate Locations:**
+1. `src/pipeline/retry.py:330-372` - `RetryConfig.calculate_backoff()`
+2. `src/transcription/service.py:41-57` - `RetryConfig.calculate_backoff()`
+3. `src/classification/classification.py:88-104` - `ClassificationSettings.calculate_backoff()`
+4. `src/notion/client.py:448-466` - `NotionService._calculate_backoff()`
+5. `src/synthesis/notion_query.py:554-570` - `SynthesisNotionQuery._calculate_backoff()`
+6. `src/synthesis/notion_writer.py:596-612` - `SynthesisNotionWriter._calculate_backoff()`
+
+**Tasks:**
+1. [ ] Create `src/common/__init__.py` with module exports
+2. [ ] Create `src/common/backoff.py` with unified implementation:
+   ```python
+   @dataclass
+   class BackoffConfig:
+       base_seconds: float = 5.0
+       max_seconds: float = 300.0
+       multiplier: float = 2.0
+       jitter_factor: float = 0.1
+
+   def calculate_backoff(
+       attempt: int,
+       config: BackoffConfig | None = None,
+       base_seconds: float = 5.0,
+       max_seconds: float = 300.0,
+       multiplier: float = 2.0,
+       jitter_factor: float = 0.1,
+   ) -> float:
+       """Calculate exponential backoff with jitter."""
+       ...
+   ```
+3. [ ] Update `src/pipeline/retry.py` to use shared backoff (keep RetryConfig, delegate to common)
+4. [ ] Update `src/transcription/service.py` to use `src.common.backoff`
+5. [ ] Update `src/classification/classification.py` to use `src.common.backoff`
+6. [ ] Update `src/notion/client.py` to use `src.common.backoff`
+7. [ ] Update `src/synthesis/notion_query.py` to use `src.common.backoff`
+8. [ ] Update `src/synthesis/notion_writer.py` to use `src.common.backoff`
+9. [ ] Write comprehensive unit tests for `src/common/backoff.py`
+10. [ ] Verify all existing tests still pass
+
+**Acceptance Criteria:**
+- [ ] Single implementation of backoff logic in `src/common/backoff.py`
+- [ ] All 6 modules refactored to use shared utility
+- [ ] Existing behavior unchanged (same backoff calculations)
+- [ ] All existing tests pass
+- [ ] New unit tests for backoff module achieve 100% coverage
+
+**Notes:**
+Keep backward compatibility by allowing both `BackoffConfig` object and individual parameters. The `pipeline/retry.py` module can re-export the function for existing consumers.
+
+---
+
+#### 6.2 Add Dependency Lock File [M2 - Medium Priority]
+
+**Issue Ref:** M2 - No Dependency Lock File
+**Severity:** Medium
+**Files Affected:**
+- `requirements.lock` (create)
+- `pyproject.toml` (modify - add lock generation instructions)
+- `docs/DEPLOYMENT_GUIDE.md` (modify - document lock file usage)
+- `.github/workflows/` (modify if exists - use lock file)
+
+**Description:**
+Project lacks a lock file for reproducible builds. Create `requirements.lock` with pinned versions of all dependencies including transitive dependencies.
+
+**Tasks:**
+1. [ ] Generate lock file using pip-compile:
+   ```bash
+   pip-compile pyproject.toml -o requirements.lock --generate-hashes
+   ```
+2. [ ] Add lock file generation instructions to pyproject.toml:
+   ```toml
+   [tool.pip-tools]
+   generate-hashes = true
+   ```
+3. [ ] Update DEPLOYMENT_GUIDE.md with lock file usage:
+   - Production: `pip install -r requirements.lock`
+   - Development: `pip install -e .`
+4. [ ] Update Dockerfile to use lock file for production builds
+5. [ ] Add pre-commit hook or CI check to verify lock file is up-to-date
+
+**Acceptance Criteria:**
+- [ ] `requirements.lock` exists with all dependencies pinned
+- [ ] Lock file includes cryptographic hashes for integrity
+- [ ] Dockerfile uses lock file for reproducible builds
+- [ ] Documentation updated with lock file workflow
+- [ ] CI validates lock file freshness (if CI exists)
+
+**Notes:**
+Use `pip-tools` (pip-compile) rather than Poetry lock files for simplicity with existing pip-based workflow.
+
+---
+
+#### 6.3 Fix Encapsulation Breach in Main Module [H3 - High Priority]
+
+**Issue Ref:** H3 - Encapsulation Breach
+**Severity:** High
+**Files Affected:**
+- `src/watcher/watcher.py` (modify)
+- `src/main.py` (modify)
+- `tests/test_main.py` (modify if needed)
+
+**Description:**
+`src/main.py:210` accesses private `self._watcher._validator` to pass the FileValidator to HttpUploadServer. This creates tight coupling and fragility. Add a public property to FolderWatcher to expose the validator.
+
+**Current Code (main.py:210):**
+```python
+file_validator=self._watcher._validator,
+```
+
+**Tasks:**
+1. [ ] Add public property to `FolderWatcher` in `src/watcher/watcher.py`:
+   ```python
+   @property
+   def file_validator(self) -> FileValidator:
+       """Get the file validator instance.
+
+       Exposed for components that need file validation
+       without full watcher functionality (e.g., HTTP server).
+       """
+       return self._validator
+   ```
+2. [ ] Update `src/main.py:210` to use public property:
+   ```python
+   file_validator=self._watcher.file_validator,
+   ```
+3. [ ] Update any tests that mock `_validator` directly
+4. [ ] Verify all tests pass
+
+**Acceptance Criteria:**
+- [ ] No access to private `_validator` attribute from outside `FolderWatcher`
+- [ ] Public `file_validator` property available on `FolderWatcher`
+- [ ] `main.py` uses public property
+- [ ] All existing tests pass
+
+**Notes:**
+Simple, low-risk change. The property makes the design intent explicit—FileValidator is a reusable component.
+
+---
+
+#### 6.4 Add Factory Method to Template Loader [M5 - Medium Priority]
+
+**Issue Ref:** M5 - Unvalidated Template Loader Init
+**Severity:** Medium
+**Files Affected:**
+- `src/classification/template_loader.py` (modify)
+- `src/main.py` (modify)
+- `tests/test_template_loader.py` (modify)
+
+**Description:**
+`TemplateLoader` requires a separate `load_all()` call after construction, which is easy to forget and leads to runtime errors. Add a factory method that ensures templates are loaded.
+
+**Current Usage Pattern:**
+```python
+loader = TemplateLoader(templates_path)
+loader.load_all()  # Easy to forget!
+```
+
+**Tasks:**
+1. [ ] Add `from_directory()` factory method to `TemplateLoader`:
+   ```python
+   @classmethod
+   def from_directory(cls, templates_dir: Path) -> "TemplateLoader":
+       """Create and initialize a TemplateLoader from a directory.
+
+       Factory method that ensures templates are loaded immediately.
+       Preferred over direct construction.
+
+       Args:
+           templates_dir: Path to directory containing template YAML files.
+
+       Returns:
+           Initialized TemplateLoader with all templates loaded.
+
+       Raises:
+           FileNotFoundError: If templates_dir does not exist.
+           TemplateLoadError: If any template file is invalid.
+       """
+       loader = cls(templates_dir)
+       loader.load_all()
+       return loader
+   ```
+2. [ ] Add deprecation warning to `__init__` when used without `load_all()`:
+   ```python
+   def __init__(self, templates_dir: Path):
+       self._loaded = False
+       ...
+
+   def get_template(self, name: str) -> TemplateConfig:
+       if not self._loaded:
+           import warnings
+           warnings.warn(
+               "TemplateLoader.get_template() called before load_all(). "
+               "Use TemplateLoader.from_directory() for safer initialization.",
+               DeprecationWarning,
+               stacklevel=2,
+           )
+       ...
+   ```
+3. [ ] Update `src/main.py` to use factory method
+4. [ ] Update tests to use factory method where appropriate
+5. [ ] Add test for deprecation warning
+
+**Acceptance Criteria:**
+- [ ] Factory method `from_directory()` available
+- [ ] Deprecation warning when using old pattern incorrectly
+- [ ] `main.py` updated to use factory method
+- [ ] All tests pass
+
+**Notes:**
+Backward compatible—existing code still works but gets a deprecation warning if misused.
+
+---
+
+#### 6.5 Split Database Module (Repository Pattern) [H1 - High Priority]
+
+**Issue Ref:** H1 - God Class: Database
+**Severity:** High
+**Files Affected:**
+- `src/db/database.py` (modify - reduce to connection management)
+- `src/db/connection.py` (create)
+- `src/db/repositories/__init__.py` (create)
+- `src/db/repositories/base.py` (create)
+- `src/db/repositories/captures.py` (create)
+- `src/db/repositories/failures.py` (create)
+- `src/db/repositories/statistics.py` (create)
+- `tests/db/test_repositories.py` (create)
+
+**Description:**
+`src/db/database.py` is 1,019 lines handling connection management, schema, and all CRUD operations for 3 tables. Split into focused repository classes following the Repository pattern.
+
+**Proposed Structure:**
+```
+src/db/
+├── __init__.py          # Export Database, repositories
+├── connection.py        # Connection pool, schema init
+├── database.py          # Facade (backward compat), delegates to repos
+├── models.py            # Unchanged
+└── repositories/
+    ├── __init__.py      # Export all repositories
+    ├── base.py          # BaseRepository with common patterns
+    ├── captures.py      # CaptureRepository
+    ├── failures.py      # FailureLogRepository
+    └── statistics.py    # StatisticsRepository
+```
+
+**Tasks:**
+1. [ ] Create `src/db/connection.py`:
+   - Move `ConnectionPool` class
+   - Move `SCHEMA_SQL` constant
+   - Move `initialize_database()` function
+2. [ ] Create `src/db/repositories/base.py`:
+   ```python
+   class BaseRepository:
+       def __init__(self, pool: ConnectionPool):
+           self._pool = pool
+
+       @asynccontextmanager
+       async def _get_connection(self) -> AsyncIterator[aiosqlite.Connection]:
+           ...
+   ```
+3. [ ] Create `src/db/repositories/captures.py`:
+   - `CaptureRepository` with all capture CRUD methods
+   - `insert_capture()`, `get_capture_by_id()`, `update_status()`, etc.
+4. [ ] Create `src/db/repositories/failures.py`:
+   - `FailureLogRepository` with failure logging methods
+   - `log_failure()`, `get_failures_for_capture()`, etc.
+5. [ ] Create `src/db/repositories/statistics.py`:
+   - `StatisticsRepository` with stats methods
+   - `get_daily_stats()`, `update_daily_stats()`, etc.
+6. [ ] Refactor `src/db/database.py` as facade:
+   ```python
+   class Database:
+       """Facade providing backward-compatible interface.
+
+       Delegates to specialized repositories internally.
+       Prefer using repositories directly for new code.
+       """
+       def __init__(self, db_path: Path):
+           self._pool = ConnectionPool(db_path)
+           self.captures = CaptureRepository(self._pool)
+           self.failures = FailureLogRepository(self._pool)
+           self.statistics = StatisticsRepository(self._pool)
+
+       # Delegate methods for backward compatibility
+       async def insert_capture(self, ...):
+           return await self.captures.insert(...)
+   ```
+7. [ ] Update imports in consuming modules (optional—facade maintains compat)
+8. [ ] Write unit tests for each repository
+9. [ ] Verify all existing tests pass
+
+**Acceptance Criteria:**
+- [ ] `database.py` reduced to <200 lines (facade + re-exports)
+- [ ] Each repository handles single table
+- [ ] Backward compatibility maintained (existing code works)
+- [ ] All existing tests pass
+- [ ] New repository tests achieve >90% coverage
+
+**Notes:**
+This is the largest refactoring item. Use the facade pattern to maintain backward compatibility—existing code calling `db.insert_capture()` continues to work while new code can use `db.captures.insert()` directly.
+
+---
+
+#### 6.6 Refactor Orchestrator (Extract Helpers) [H2 - High Priority]
+
+**Issue Ref:** H2 - God Class: Orchestrator
+**Severity:** High
+**Files Affected:**
+- `src/pipeline/orchestrator.py` (modify - reduce)
+- `src/pipeline/text_formatter.py` (create)
+- `src/pipeline/file_operations.py` (create)
+- `tests/pipeline/test_text_formatter.py` (create)
+- `tests/pipeline/test_file_operations.py` (create)
+
+**Description:**
+`src/pipeline/orchestrator.py` is 977 lines with mixed responsibilities: state machine, text formatting, file operations, and circuit breaker coordination. Extract helper classes for cohesion.
+
+**Proposed Extraction:**
+1. **TextFormatter** - Title generation, device formatting, text truncation
+2. **FileOperations** - Move to processing, move to failed, delete on success
+
+**Tasks:**
+1. [ ] Create `src/pipeline/text_formatter.py`:
+   ```python
+   class TextFormatter:
+       """Text formatting utilities for capture processing."""
+
+       @staticmethod
+       def generate_title(transcript: str, max_length: int = 100) -> str:
+           """Generate title from first sentence of transcript."""
+           ...
+
+       @staticmethod
+       def format_device_name(device: str) -> str:
+           """Format device name for display."""
+           ...
+
+       @staticmethod
+       def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
+           """Truncate text to max length with suffix."""
+           ...
+   ```
+2. [ ] Create `src/pipeline/file_operations.py`:
+   ```python
+   class FileOperations:
+       """File operations for capture processing pipeline."""
+
+       def __init__(self, paths: PathsSettings):
+           self._paths = paths
+
+       async def move_to_processing(self, source: Path) -> Path:
+           """Move file from inbox to processing directory."""
+           ...
+
+       async def move_to_failed(self, source: Path) -> Path:
+           """Move file to failed directory."""
+           ...
+
+       async def delete_on_success(self, file_path: Path) -> None:
+           """Delete file after successful processing."""
+           ...
+   ```
+3. [ ] Refactor `orchestrator.py` to use extracted classes:
+   - Inject `TextFormatter` and `FileOperations`
+   - Remove inline implementations
+   - Keep state machine and coordination logic
+4. [ ] Write unit tests for `TextFormatter`
+5. [ ] Write unit tests for `FileOperations`
+6. [ ] Verify all existing tests pass
+
+**Acceptance Criteria:**
+- [ ] `orchestrator.py` reduced to <600 lines
+- [ ] `TextFormatter` handles all text processing
+- [ ] `FileOperations` handles all file moves/deletes
+- [ ] State machine logic remains clear in orchestrator
+- [ ] All existing tests pass
+- [ ] New helper tests achieve >90% coverage
+
+**Notes:**
+Keep circuit breaker and retry coordination in orchestrator—these are core pipeline concerns. Extract only the utility functions.
+
+---
+
+#### 6.7 Separate CLI Queue Status Concerns [M3 - Medium Priority]
+
+**Issue Ref:** M3 - Mixed Concerns in CLI
+**Severity:** Medium
+**Files Affected:**
+- `src/cli/queue_status.py` (modify - reduce)
+- `src/cli/queue_status_query.py` (create)
+- `src/cli/queue_status_presenter.py` (create)
+- `tests/cli/test_queue_status_query.py` (create)
+- `tests/cli/test_queue_status_presenter.py` (create)
+
+**Description:**
+`src/cli/queue_status.py` is 499 lines mixing data fetching, statistics calculation, and Rich table rendering. Separate into query and presentation layers for testability.
+
+**Tasks:**
+1. [ ] Create `src/cli/queue_status_query.py`:
+   ```python
+   @dataclass
+   class QueueStatusData:
+       """Data transfer object for queue status."""
+       pending_count: int
+       processing_count: int
+       failed_count: int
+       complete_count: int
+       recent_failures: list[FailureInfo]
+       http_stats: HttpStats | None
+       ...
+
+   class QueueStatusQuery:
+       """Query layer for queue status data."""
+
+       def __init__(self, db: Database):
+           self._db = db
+
+       async def get_status(self, include_http: bool = False) -> QueueStatusData:
+           ...
+   ```
+2. [ ] Create `src/cli/queue_status_presenter.py`:
+   ```python
+   class QueueStatusPresenter:
+       """Presentation layer for queue status using Rich."""
+
+       def __init__(self, console: Console):
+           self._console = console
+
+       def display(self, data: QueueStatusData, verbose: bool = False) -> None:
+           ...
+
+       def display_failed_only(self, data: QueueStatusData) -> None:
+           ...
+   ```
+3. [ ] Refactor `queue_status.py` to orchestrate query and presenter:
+   ```python
+   @click.command()
+   async def queue_status(verbose: bool, failed: bool, http: bool):
+       query = QueueStatusQuery(db)
+       presenter = QueueStatusPresenter(Console())
+
+       data = await query.get_status(include_http=http)
+
+       if failed:
+           presenter.display_failed_only(data)
+       else:
+           presenter.display(data, verbose=verbose)
+   ```
+4. [ ] Write unit tests for `QueueStatusQuery` (no Rich dependency)
+5. [ ] Write unit tests for `QueueStatusPresenter` (mock Console)
+6. [ ] Verify all existing CLI tests pass
+
+**Acceptance Criteria:**
+- [ ] `queue_status.py` reduced to <100 lines (thin orchestration)
+- [ ] Query layer testable without Rich
+- [ ] Presenter layer handles all formatting
+- [ ] All existing tests pass
+
+**Notes:**
+This enables testing business logic (calculations, filtering) separately from presentation (Rich tables).
+
+---
+
+#### 6.8 Add Interface Abstractions for Services [M4 - Medium Priority]
+
+**Issue Ref:** M4 - Missing Interface Abstractions
+**Severity:** Medium
+**Files Affected:**
+- `src/interfaces/__init__.py` (create)
+- `src/interfaces/transcription.py` (create)
+- `src/interfaces/classification.py` (create)
+- `src/interfaces/notion.py` (create)
+- `src/interfaces/notifications.py` (create)
+- `src/transcription/service.py` (modify - implement protocol)
+- `src/classification/classification.py` (modify - implement protocol)
+- `src/notion/client.py` (modify - implement protocol)
+- `src/notifications/pushover.py` (modify - implement protocol)
+- `src/pipeline/orchestrator.py` (modify - use protocols in type hints)
+
+**Description:**
+Services lack formal interfaces (Protocols), making the orchestrator tightly coupled to concrete implementations. Add Protocol definitions for better testability and future extensibility.
+
+**Tasks:**
+1. [ ] Create `src/interfaces/__init__.py` with exports
+2. [ ] Create `src/interfaces/transcription.py`:
+   ```python
+   from typing import Protocol
+   from pathlib import Path
+   from src.models.transcription import TranscriptionResult
+
+   class ITranscriptionService(Protocol):
+       """Interface for transcription services."""
+
+       async def transcribe(self, file_path: Path) -> TranscriptionResult:
+           """Transcribe audio file to text."""
+           ...
+   ```
+3. [ ] Create `src/interfaces/classification.py`:
+   ```python
+   class IClassificationService(Protocol):
+       """Interface for classification services."""
+
+       async def classify(
+           self,
+           transcript: str,
+           metadata: CaptureMetadata
+       ) -> ClassificationResult:
+           """Classify transcript into template type."""
+           ...
+   ```
+4. [ ] Create `src/interfaces/notion.py`:
+   ```python
+   class INotionService(Protocol):
+       """Interface for Notion integration."""
+
+       async def create_capture_page(
+           self,
+           metadata: CaptureMetadata
+       ) -> NotionPage:
+           """Create a Notion page for a capture."""
+           ...
+   ```
+5. [ ] Create `src/interfaces/notifications.py`:
+   ```python
+   class INotificationService(Protocol):
+       """Interface for notification services."""
+
+       async def notify_processing_failure(
+           self,
+           filename: str,
+           error: str,
+           stage: str
+       ) -> None:
+           """Send notification about processing failure."""
+           ...
+   ```
+6. [ ] Update concrete implementations to explicitly implement protocols
+7. [ ] Update `PipelineOrchestrator.__init__()` type hints to use protocols
+8. [ ] Write tests verifying protocol compliance
+
+**Acceptance Criteria:**
+- [ ] Protocol definitions for all major services
+- [ ] Orchestrator depends on protocols, not concrete classes
+- [ ] All services implement their respective protocols
+- [ ] All existing tests pass
+- [ ] Protocol compliance tests added
+
+**Notes:**
+Using `typing.Protocol` (structural subtyping) rather than ABC—implementations don't need to explicitly inherit, just match the interface.
+
+---
+
+#### 6.9 Add Secret Masking to Error Logs [M6 - Medium Priority]
+
+**Issue Ref:** M6 - Secrets in Error Logs
+**Severity:** Medium (Security)
+**Files Affected:**
+- `src/common/secrets.py` (create)
+- `src/pipeline/retry.py` (modify)
+- `src/pipeline/orchestrator.py` (modify)
+- `src/config/settings.py` (modify - add secret patterns)
+- `tests/common/test_secrets.py` (create)
+
+**Description:**
+Error logs may contain sensitive information (API keys, tokens) from exception messages and tracebacks. Add secret masking before logging or storing in database.
+
+**Tasks:**
+1. [ ] Create `src/common/secrets.py`:
+   ```python
+   import re
+   from typing import Sequence
+
+   # Common patterns for secrets
+   DEFAULT_SECRET_PATTERNS = [
+       r'sk-[a-zA-Z0-9]{20,}',           # OpenAI API keys
+       r'sk-ant-[a-zA-Z0-9-]{20,}',       # Anthropic API keys
+       r'secret_[a-zA-Z0-9]{20,}',        # Notion tokens
+       r'Bearer\s+[a-zA-Z0-9._-]+',       # Bearer tokens
+       r'api[_-]?key["\s:=]+[a-zA-Z0-9]+', # Generic API keys
+       r'password["\s:=]+[^\s"]+',        # Passwords
+   ]
+
+   def mask_secrets(
+       text: str,
+       patterns: Sequence[str] | None = None,
+       replacement: str = "[REDACTED]"
+   ) -> str:
+       """Mask secrets in text using regex patterns.
+
+       Args:
+           text: Text that may contain secrets.
+           patterns: Regex patterns to match. Defaults to common patterns.
+           replacement: String to replace matched secrets.
+
+       Returns:
+           Text with secrets replaced by replacement string.
+       """
+       ...
+
+   def mask_exception(error: Exception) -> str:
+       """Get masked string representation of exception."""
+       return mask_secrets(str(error))
+   ```
+2. [ ] Add secret patterns configuration to settings:
+   ```python
+   class SecuritySettings(BaseModel):
+       secret_patterns: list[str] = Field(
+           default=DEFAULT_SECRET_PATTERNS,
+           description="Regex patterns for secrets to mask in logs"
+       )
+   ```
+3. [ ] Update `src/pipeline/retry.py` to mask secrets in error details:
+   ```python
+   def build_detailed_error_log(error: Exception, stage: str) -> dict:
+       return {
+           "stage": stage,
+           "error_type": type(error).__name__,
+           "error_message": mask_secrets(str(error)),
+           "traceback": mask_secrets(traceback.format_exc()),
+       }
+   ```
+4. [ ] Update `src/pipeline/orchestrator.py` to use masked errors in notifications
+5. [ ] Write comprehensive tests for secret masking
+
+**Acceptance Criteria:**
+- [ ] API keys masked in log output
+- [ ] Secrets masked in database error_details
+- [ ] Secrets masked in Pushover notifications
+- [ ] Configurable patterns via settings
+- [ ] Tests verify masking works for all known patterns
+
+**Notes:**
+Defense-in-depth—secrets shouldn't appear in errors, but if they do, they'll be masked.
+
+---
+
+#### 6.10 Consolidate Datetime Parsing [L1 - Low Priority]
+
+**Issue Ref:** L1 - Duplicate datetime parsing
+**Severity:** Low
+**Files Affected:**
+- `src/common/datetime_utils.py` (create)
+- `src/db/models.py` (modify)
+- `src/models/capture.py` (modify)
+- `tests/common/test_datetime_utils.py` (create)
+
+**Description:**
+Datetime parsing from database rows is duplicated in `src/db/models.py` and `src/models/capture.py`. Consolidate into a shared utility.
+
+**Tasks:**
+1. [ ] Create `src/common/datetime_utils.py`:
+   ```python
+   from datetime import datetime
+   from typing import Optional, Union
+
+   def parse_datetime(
+       value: Union[str, datetime, None],
+       default: Optional[datetime] = None
+   ) -> Optional[datetime]:
+       """Parse datetime from string or return as-is.
+
+       Handles common formats from SQLite and ISO 8601.
+       """
+       if value is None:
+           return default
+       if isinstance(value, datetime):
+           return value
+       # Handle SQLite format and ISO 8601
+       for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", ...]:
+           try:
+               return datetime.strptime(value, fmt)
+           except ValueError:
+               continue
+       return default
+   ```
+2. [ ] Update `src/db/models.py` to use shared utility
+3. [ ] Update `src/models/capture.py` to use shared utility
+4. [ ] Write tests for datetime parsing edge cases
+
+**Acceptance Criteria:**
+- [ ] Single datetime parsing implementation
+- [ ] All date formats handled consistently
+- [ ] All existing tests pass
+
+**Notes:**
+Low priority—functional but duplicated. Good cleanup for consistency.
+
+---
+
+#### 6.11 Standardize Factory Patterns [L2 - Low Priority]
+
+**Issue Ref:** L2 - Inconsistent factory patterns
+**Severity:** Low
+**Files Affected:**
+- `src/transcription/service.py` (modify)
+- `src/classification/classification.py` (modify)
+- `src/notion/client.py` (modify)
+
+**Description:**
+Service creation uses inconsistent patterns (some constructors, some factory methods). Standardize on `create()` or `from_settings()` class methods.
+
+**Tasks:**
+1. [ ] Add consistent `from_settings()` factory methods:
+   ```python
+   class TranscriptionService:
+       @classmethod
+       def from_settings(cls, settings: Settings) -> "TranscriptionService":
+           """Create service from application settings."""
+           return cls(
+               api_key=settings.transcription.api_key,
+               model=settings.transcription.model,
+               ...
+           )
+   ```
+2. [ ] Update `NotionService` with `from_settings()` method
+3. [ ] Update `ClassificationService` with `from_settings()` method
+4. [ ] Update `main.py` to use factory methods where beneficial
+5. [ ] Document preferred instantiation pattern
+
+**Acceptance Criteria:**
+- [ ] All services have consistent `from_settings()` factory
+- [ ] Pattern documented in code comments
+- [ ] All existing tests pass
+
+**Notes:**
+Low priority—improves consistency but doesn't affect functionality.
+
+---
+
+### Phase 6 Testing Requirements
+
+- [ ] Unit tests for `src/common/backoff.py`
+- [ ] Unit tests for `src/common/secrets.py`
+- [ ] Unit tests for `src/common/datetime_utils.py`
+- [ ] Unit tests for each repository in `src/db/repositories/`
+- [ ] Unit tests for `src/pipeline/text_formatter.py`
+- [ ] Unit tests for `src/pipeline/file_operations.py`
+- [ ] Unit tests for `src/cli/queue_status_query.py`
+- [ ] Unit tests for `src/cli/queue_status_presenter.py`
+- [ ] Protocol compliance tests for all interfaces
+- [ ] All existing tests must continue to pass
+- [ ] No regressions in functionality
+
+### Phase 6 Completion Checklist
+
+- [ ] All work items complete
+- [ ] All tests passing (existing + new)
+- [ ] No breaking changes to public APIs
+- [ ] Database module reduced to facade (<200 lines)
+- [ ] Orchestrator reduced (<600 lines)
+- [ ] No duplicate backoff implementations
+- [ ] Secrets masked in all error logs
+- [ ] Lock file generated and documented
+- [ ] Interface protocols defined and implemented
+
+---
+
+### Phase 6 Parallel Work Opportunities
+
+| Work Item | Can Run With | Notes |
+|-----------|--------------|-------|
+| 6.1 Backoff Utility | 6.2 Lock File | Independent infrastructure |
+| 6.2 Lock File | 6.3 Encapsulation | Independent |
+| 6.3 Encapsulation | 6.4 Template Loader | Both simple, isolated changes |
+| 6.5 Database Split | 6.6 Orchestrator Split | Both large, but different subsystems |
+| 6.7 CLI Split | 6.8 Interfaces | Different subsystems |
+| 6.9 Secret Masking | 6.10 Datetime Utils | Both common module additions |
+| 6.10 Datetime Utils | 6.11 Factory Patterns | Both low-priority cleanup |
+
+**Recommended Order:**
+1. **Quick wins first (parallel):** 6.2, 6.3, 6.4
+2. **Medium effort (parallel):** 6.1, 6.9, 6.10
+3. **Large refactors (sequential):** 6.5, then 6.6
+4. **Cleanup:** 6.7, 6.8, 6.11
+
+---
+
+### Phase 6 Risk Mitigation
+
+| Risk | Likelihood | Impact | Mitigation Strategy |
+|------|------------|--------|---------------------|
+| Breaking existing tests | Medium | High | Run full test suite after each change |
+| Circular imports from new structure | Low | Medium | Plan imports carefully; use TYPE_CHECKING |
+| Merge conflicts with active development | Low | Low | Complete phase as atomic unit |
+| Performance regression from abstractions | Very Low | Low | Abstractions are thin wrappers |
+| Incomplete refactoring leaves inconsistent state | Medium | Medium | Complete each work item fully before moving on |
+
+---
+
 ## Implementation Status
 
 **Phases 1-4:** Complete (2026-01-21)
 **Phase 5:** Complete (2026-01-24)
+**Phase 6:** Planned (Technical Debt Remediation)
 
 | Phase | Work Items | Status |
 |-------|------------|--------|
@@ -1640,6 +2478,7 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 | Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | ✅ Complete 2026-01-21 |
 | Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | ✅ Complete 2026-01-20 |
 | Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | ✅ Complete 2026-01-24 |
+| Phase 6: Technical Debt Remediation | 11 items (6.1-6.11) | 📋 Planned |
 
 ---
 
@@ -1667,10 +2506,22 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 | **Alternative to rclone** | **User request** | **5** | **5.2, 5.3** |
 | **Tailscale integration** | **User request** | **5** | **5.6, 5.7** |
 | **Immediate processing** | **User request** | **5** | **5.3, 5.5** |
+| **DRY: Extract backoff utility** | **Arch Review** | **6** | **6.1** |
+| **Reproducible builds: Lock file** | **Arch Review** | **6** | **6.2** |
+| **Encapsulation: Fix private access** | **Arch Review** | **6** | **6.3** |
+| **Safer init: Template loader factory** | **Arch Review** | **6** | **6.4** |
+| **Maintainability: Split database** | **Arch Review** | **6** | **6.5** |
+| **Maintainability: Split orchestrator** | **Arch Review** | **6** | **6.6** |
+| **Testability: Split CLI concerns** | **Arch Review** | **6** | **6.7** |
+| **Testability: Interface abstractions** | **Arch Review** | **6** | **6.8** |
+| **Security: Secret masking** | **Arch Review** | **6** | **6.9** |
+| **Consistency: Datetime utils** | **Arch Review** | **6** | **6.10** |
+| **Consistency: Factory patterns** | **Arch Review** | **6** | **6.11** |
 
 ---
 
 *Implementation plan generated by Claude on 2026-01-20*
 *Phase 5 added: 2026-01-24*
 *Phase 5 completed: 2026-01-24*
-*Source documents: docs/PRD.md v1.0, docs/TDD.md v1.0, User requirements*
+*Phase 6 added: 2026-01-24 (Technical Debt Remediation from Architectural Review)*
+*Source documents: docs/PRD.md v1.0, docs/TDD.md v1.0, User requirements, Architectural Review*
