@@ -35,9 +35,7 @@ certifi==2026.1.4
     # via
     #   httpcore
     #   httpx
-    #   requests
-charset-normalizer==3.4.2
-    # via requests
+# charset-normalizer removed - was only needed by requests
 click==8.3.1
     # via -r requirements.txt
 distro==1.9.0
@@ -63,7 +61,6 @@ idna==3.11
     # via
     #   anyio
     #   httpx
-    #   requests
     #   yarl
 jinja2==3.1.6
     # via -r requirements.txt
@@ -105,13 +102,10 @@ python-dotenv==1.2.1
     # via
     #   -r requirements.txt
     #   pydantic-settings
-python-pushover==0.4
-    # via -r requirements.txt
-    # Note: Pinned manually - package has legacy setup.py that pip-compile cannot resolve
+# python-pushover removed - pushover.py uses aiohttp directly
 pyyaml==6.0.3
     # via -r requirements.txt
-requests==2.32.3
-    # via python-pushover
+# requests removed - was only needed by python-pushover
 rich==14.2.0
     # via -r requirements.txt
 sniffio==1.3.1
@@ -133,8 +127,7 @@ typing-inspection==0.4.2
     # via
     #   pydantic
     #   pydantic-settings
-urllib3==2.4.0
-    # via requests
+# urllib3 removed - was only needed by requests
 watchdog==6.0.0
     # via -r requirements.txt
 yarl==1.22.0
