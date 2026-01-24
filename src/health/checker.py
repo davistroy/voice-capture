@@ -333,14 +333,15 @@ class HealthChecker:
 
             client = AsyncClient(auth=self.settings.notion_api_key)
 
-            # Query database to verify access
-            response = await client.databases.query(
+            # Retrieve database metadata to verify access
+            # Using databases.retrieve() instead of query() for compatibility
+            # with notion-client 2.7.0+ where query() moved to data_sources
+            response = await client.databases.retrieve(
                 database_id=self.settings.notion_voice_captures_db_id,
-                page_size=1,
             )
             duration_ms = (time.perf_counter() - start) * 1000
 
-            if "results" in response:
+            if "id" in response:
                 return HealthCheck(
                     name="Notion API",
                     status=CheckStatus.PASS,

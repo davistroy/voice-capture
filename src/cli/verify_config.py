@@ -411,21 +411,25 @@ async def _test_notion_api(
 
         client = AsyncClient(auth=api_key)
 
-        # Query database to verify access
-        # Limit to 1 result for efficiency
-        response = await client.databases.query(
+        # Retrieve database metadata to verify access
+        # Using databases.retrieve() instead of query() for compatibility
+        # with notion-client 2.7.0+ where query() moved to data_sources
+        response = await client.databases.retrieve(
             database_id=database_id,
-            page_size=1,
         )
 
-        # Check response
-        if "results" in response:
-            result_count = len(response.get("results", []))
+        # Check response - retrieve returns database object with id
+        if "id" in response:
+            db_title = "Unknown"
+            if response.get("title"):
+                title_parts = response["title"]
+                if title_parts and len(title_parts) > 0:
+                    db_title = title_parts[0].get("plain_text", "Unknown")
             return CheckResult(
                 name="Notion API",
                 status=CheckStatus.PASS,
                 message=f"Connected - Database accessible",
-                details=f"Found {result_count} result(s) in test query" if verbose else None,
+                details=f"Database: {db_title}" if verbose else None,
             )
         else:
             return CheckResult(
