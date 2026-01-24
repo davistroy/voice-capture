@@ -21,6 +21,7 @@ from aiohttp import web
 
 from src.config.settings import HttpServerSettings, PathsSettings
 from src.db.database import Database
+from src.http.middleware import create_middleware_stack
 from src.http.responses import ErrorCode, error_response, health_response, success_response
 from src.models.capture import Device
 from src.watcher.file_validator import FileValidator
@@ -86,8 +87,15 @@ class HttpUploadServer:
         Returns:
             Configured aiohttp Application with routes and middleware.
         """
+        # Create middleware stack with optional authentication
+        middlewares = create_middleware_stack(
+            api_key=self.settings.api_key,
+            skip_auth_paths={"/health"},
+        )
+
         app = web.Application(
-            client_max_size=self.settings.max_upload_mb * 1024 * 1024
+            client_max_size=self.settings.max_upload_mb * 1024 * 1024,
+            middlewares=middlewares,
         )
 
         # Store references for handlers
@@ -267,19 +275,7 @@ class HttpUploadServer:
         """
         start_time = time.time()
 
-        # Check API key if configured
-        if self.settings.api_key:
-            api_key = request.headers.get("X-API-Key")
-            if not api_key:
-                return error_response(
-                    ErrorCode.AUTHENTICATION_REQUIRED,
-                    "X-API-Key header is required",
-                )
-            if api_key != self.settings.api_key:
-                return error_response(
-                    ErrorCode.AUTHENTICATION_FAILED,
-                    "Invalid API key",
-                )
+        # Note: Authentication is handled by middleware
 
         # Parse query parameters
         wait_for_result = request.query.get("wait", "true").lower() in ("true", "1", "yes")
@@ -434,19 +430,7 @@ class HttpUploadServer:
         Returns:
             JSON response with capture status or error.
         """
-        # Check API key if configured
-        if self.settings.api_key:
-            api_key = request.headers.get("X-API-Key")
-            if not api_key:
-                return error_response(
-                    ErrorCode.AUTHENTICATION_REQUIRED,
-                    "X-API-Key header is required",
-                )
-            if api_key != self.settings.api_key:
-                return error_response(
-                    ErrorCode.AUTHENTICATION_FAILED,
-                    "Invalid API key",
-                )
+        # Note: Authentication is handled by middleware
 
         # Parse capture_id
         try:
