@@ -50,7 +50,9 @@ Just Press    iOS Shortcut    Python      Voice Captures
 voice-capture/
 ├── docs/
 │   ├── prd.md              # Product Requirements Document
-│   └── TDD.md              # Technical Design Document
+│   ├── TDD.md              # Technical Design Document
+│   ├── DEPLOYMENT_GUIDE.md # Deployment instructions
+│   └── IOS_SHORTCUT_HTTP.md # iOS Shortcut for HTTP uploads
 ├── src/
 │   ├── watcher/            # Folder monitoring (watchdog)
 │   ├── transcription/      # Whisper API integration
@@ -60,6 +62,7 @@ voice-capture/
 │   ├── health/             # Health check system
 │   ├── synthesis/          # Weekly synthesis engine
 │   ├── pipeline/           # Orchestrator + retry logic
+│   ├── http/               # HTTP server for direct uploads
 │   ├── cli/                # CLI commands (verify, retry, reset, queue, health)
 │   ├── db/                 # SQLite database layer
 │   ├── models/             # Domain models
