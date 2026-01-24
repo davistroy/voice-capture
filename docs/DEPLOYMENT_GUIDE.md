@@ -103,7 +103,37 @@ cd voice-capture
 cp .env.example .env
 ```
 
-### 3.2 Edit .env File
+### 3.2 Dependency Installation
+
+The project provides two ways to install dependencies:
+
+**Production (Reproducible Builds):**
+```bash
+# Use the lock file for exact, reproducible dependency versions
+pip install -r requirements.lock
+```
+
+**Development:**
+```bash
+# Install with editable mode for development
+pip install -e .
+
+# Or with dev dependencies
+pip install -e ".[dev]"
+```
+
+**Regenerating the Lock File:**
+```bash
+# Install pip-tools if needed
+pip install pip-tools
+
+# Regenerate the lock file after updating requirements.txt
+pip-compile requirements.txt -o requirements.lock
+```
+
+> Note: The Docker build automatically uses `requirements.lock` for reproducible production deployments.
+
+### 3.3 Edit .env File
 
 ```bash
 nano .env  # or your preferred editor
@@ -128,7 +158,7 @@ VOICE_CAPTURE_LOG_LEVEL=INFO
 RCLONE_SYNC_INTERVAL=180
 ```
 
-### 3.3 Configure rclone (Google Drive Sync)
+### 3.4 Configure rclone (Google Drive Sync)
 
 **If your server has a browser:**
 ```bash
@@ -153,7 +183,7 @@ This will:
 rclone ls gdrive:/VoiceCaptures/inbox
 ```
 
-### 3.4 Start the Services
+### 3.5 Start the Services
 
 ```bash
 # Build and start
@@ -166,7 +196,7 @@ docker-compose logs -f
 docker-compose ps
 ```
 
-### 3.5 Verify Configuration
+### 3.6 Verify Configuration
 
 ```bash
 # Run config verification

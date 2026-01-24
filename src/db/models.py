@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 
+from src.common.datetime_utils import parse_datetime as _shared_parse_datetime
+
 
 @dataclass
 class CaptureRow:
@@ -135,21 +137,12 @@ class DailyStatsRow:
 
 
 def _parse_datetime(value: Any) -> Optional[datetime]:
-    """Parse a datetime value from database."""
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
-        # SQLite stores datetime as ISO format string
-        try:
-            # Handle both with and without microseconds
-            if "." in value:
-                return datetime.fromisoformat(value)
-            return datetime.fromisoformat(value)
-        except ValueError:
-            return None
-    return None
+    """Parse a datetime value from database.
+
+    Delegates to the shared parse_datetime utility for consistent
+    datetime parsing across the codebase.
+    """
+    return _shared_parse_datetime(value)
 
 
 def _parse_json(value: Any) -> Optional[Any]:

@@ -167,9 +167,9 @@ class TestVoiceCaptureAppInitialize:
         """Test initialization without HTTP server."""
         app = VoiceCaptureApp(test_settings_without_http)
 
-        # Mock external services
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        # Mock external services using the new factory method pattern
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion_instance = AsyncMock()
             mock_notion.return_value = mock_notion_instance
@@ -192,9 +192,9 @@ class TestVoiceCaptureAppInitialize:
         """Test initialization with HTTP server enabled."""
         app = VoiceCaptureApp(test_settings_with_http)
 
-        # Mock external services
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        # Mock external services using the new factory method pattern
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion_instance = AsyncMock()
             mock_notion.return_value = mock_notion_instance
@@ -233,8 +233,8 @@ class TestVoiceCaptureAppInitialize:
 
             app = VoiceCaptureApp(settings)
 
-            with patch("src.main.create_whisper_service") as mock_whisper, \
-                 patch("src.main.NotionService") as mock_notion:
+            with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+                 patch("src.notion.client.NotionService.from_settings") as mock_notion:
                 mock_whisper.return_value = MagicMock(backend_name="whisper_api")
                 mock_notion.return_value = AsyncMock()
 
@@ -266,8 +266,8 @@ class TestVoiceCaptureAppRun:
         """Test run without HTTP server."""
         app = VoiceCaptureApp(test_settings_without_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 
@@ -294,8 +294,8 @@ class TestVoiceCaptureAppRun:
         """Test run with HTTP server starts the server."""
         app = VoiceCaptureApp(test_settings_with_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 
@@ -339,8 +339,8 @@ class TestVoiceCaptureAppShutdown:
         """Test shutdown without HTTP server."""
         app = VoiceCaptureApp(test_settings_without_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 
@@ -355,8 +355,8 @@ class TestVoiceCaptureAppShutdown:
         """Test shutdown stops HTTP server."""
         app = VoiceCaptureApp(test_settings_with_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 
@@ -376,8 +376,8 @@ class TestVoiceCaptureAppShutdown:
         """Test shutdown can be called multiple times safely."""
         app = VoiceCaptureApp(test_settings_without_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 
@@ -396,8 +396,8 @@ class TestVoiceCaptureAppHttpIntegration:
         """Test HTTP server is configured with correct orchestrator."""
         app = VoiceCaptureApp(test_settings_with_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 
@@ -414,8 +414,8 @@ class TestVoiceCaptureAppHttpIntegration:
         """Test HTTP server receives file validator from watcher."""
         app = VoiceCaptureApp(test_settings_with_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 
@@ -431,8 +431,8 @@ class TestVoiceCaptureAppHttpIntegration:
         """Test HTTP server receives path settings."""
         app = VoiceCaptureApp(test_settings_with_http)
 
-        with patch("src.main.create_whisper_service") as mock_whisper, \
-             patch("src.main.NotionService") as mock_notion:
+        with patch("src.transcription.service.TranscriptionService.from_settings") as mock_whisper, \
+             patch("src.notion.client.NotionService.from_settings") as mock_notion:
             mock_whisper.return_value = MagicMock(backend_name="whisper_api")
             mock_notion.return_value = AsyncMock()
 

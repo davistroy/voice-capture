@@ -5,16 +5,32 @@ Implements retry logic with exponential backoff and rate limit handling.
 
 Phase 2 enhancement: Supports template-specific property mapping
 via PropertyMapper and Jinja2 content building via ContentBuilder.
+
+Preferred instantiation pattern:
+    # Using factory method (recommended)
+    from src.config.settings import get_settings
+    settings = get_settings()
+    service = NotionService.from_settings(settings)
+
+    # Direct instantiation (for testing or custom configuration)
+    service = NotionService(
+        api_key="...",
+        database_id="...",
+        max_retries=3,
+    )
 """
 
+from __future__ import annotations
+
 import asyncio
-import random
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from notion_client import AsyncClient
+
+from src.common.backoff import calculate_backoff
 from notion_client.errors import APIResponseError, HTTPResponseError
 
 from src.notion.page_builder import PageBuilder
@@ -28,6 +44,9 @@ from src.notion.content_builder import ContentBuilder, ContentBuildError
 from src.models.transcription import TranscriptionResult
 from src.models.classification import ClassificationResult
 from src.classification.template_config import TemplateConfig
+
+if TYPE_CHECKING:
+    from src.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +120,34 @@ class NotionService:
         self._page_builder = PageBuilder()
         self._property_mapper = PropertyMapper()
         self._content_builder = ContentBuilder()
+
+    @classmethod
+    def from_settings(cls, settings: Settings) -> NotionService:
+        """
+        Create a NotionService from application settings.
+
+        This is the preferred way to instantiate the service in production code.
+        It extracts all necessary configuration from the Settings object.
+
+        Args:
+            settings: Application settings containing Notion API key, database ID,
+                and pipeline configuration.
+
+        Returns:
+            Configured NotionService instance.
+
+        Example:
+            from src.config.settings import get_settings
+            settings = get_settings()
+            service = NotionService.from_settings(settings)
+        """
+        return cls(
+            api_key=settings.notion_api_key,
+            database_id=settings.notion_voice_captures_db_id,
+            max_retries=settings.pipeline.max_retries,
+            base_backoff=settings.pipeline.base_backoff_seconds,
+            max_backoff=settings.pipeline.max_backoff_seconds,
+        )
 
     async def close(self) -> None:
         """Close the underlying HTTP client."""
@@ -451,19 +498,21 @@ class NotionService:
         Formula: min(base * 2^attempt + jitter, max)
         Jitter is 10% of the calculated backoff.
 
+        Delegates to src.common.backoff.calculate_backoff.
+
         Args:
             attempt: Current retry attempt (0-indexed).
 
         Returns:
             Backoff delay in seconds.
         """
-        backoff = min(
-            self._base_backoff * (2 ** attempt),
-            self._max_backoff
+        return calculate_backoff(
+            attempt=attempt,
+            base_seconds=self._base_backoff,
+            max_seconds=self._max_backoff,
+            multiplier=2.0,
+            jitter_factor=0.1,
         )
-        # Add 10% jitter
-        jitter = backoff * 0.1 * random.random()
-        return backoff + jitter
 
     def _extract_retry_after(self, error: HTTPResponseError) -> float:
         """Extract Retry-After header value from rate limit response.

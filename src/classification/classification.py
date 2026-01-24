@@ -3,19 +3,33 @@ Classification service for voice capture pipeline.
 
 Handles transcript classification and field extraction using Claude API
 per TDD Section 4.3.
+
+Preferred instantiation pattern:
+    # Using factory method (recommended)
+    from src.config.settings import get_settings
+    settings = get_settings()
+    service = ClassificationService.from_settings(settings)
+
+    # Direct instantiation (for testing or custom configuration)
+    from anthropic import Anthropic
+    client = Anthropic(api_key="...")
+    loader = TemplateLoader.from_directory(Path("config/templates"))
+    service = ClassificationService(anthropic_client=client, template_loader=loader)
 """
+
+from __future__ import annotations
 
 import asyncio
 import logging
-import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import yaml
 
 from src.classification.template_loader import TemplateLoader
+from src.common.backoff import calculate_backoff
 from src.classification.prompt_builder import PromptBuilder, TranscriptMetadata, build_corrective_prompt
 from src.classification.response_parser import (
     ResponseParser,
@@ -24,6 +38,9 @@ from src.classification.response_parser import (
     create_fallback_result,
 )
 from src.models.classification import ClassificationResult
+
+if TYPE_CHECKING:
+    from src.config.settings import Settings
 
 
 logger = logging.getLogger(__name__)
@@ -89,19 +106,21 @@ class ClassificationConfig:
         """
         Calculate exponential backoff with jitter.
 
+        Delegates to src.common.backoff.calculate_backoff.
+
         Args:
             retry_count: Current retry attempt (0-indexed).
 
         Returns:
             Backoff duration in seconds.
         """
-        backoff = min(
-            self.base_backoff_seconds * (self.backoff_multiplier ** retry_count),
-            self.max_backoff_seconds,
+        return calculate_backoff(
+            attempt=retry_count,
+            base_seconds=self.base_backoff_seconds,
+            max_seconds=self.max_backoff_seconds,
+            multiplier=self.backoff_multiplier,
+            jitter_factor=0.1,  # 10% jitter, matching original behavior
         )
-        # Add 10% jitter
-        jitter = backoff * 0.1 * random.random()
-        return backoff + jitter
 
 
 class ClassificationError(Exception):
@@ -125,8 +144,7 @@ class ClassificationService:
         from anthropic import Anthropic
 
         client = Anthropic(api_key="sk-...")
-        loader = TemplateLoader(Path("config/templates"))
-        loader.load_all()
+        loader = TemplateLoader.from_directory(Path("config/templates"))
 
         service = ClassificationService(
             anthropic_client=client,
@@ -172,6 +190,51 @@ class ClassificationService:
             template_loader=template_loader,
             confidence_threshold=self.config.confidence_threshold,
             fallback_template=self.config.fallback_template,
+        )
+
+    @classmethod
+    def from_settings(cls, settings: Settings) -> ClassificationService:
+        """
+        Create a ClassificationService from application settings.
+
+        This is the preferred way to instantiate the service in production code.
+        It extracts all necessary configuration from the Settings object,
+        creates the Anthropic client, and loads templates.
+
+        Args:
+            settings: Application settings containing classification configuration
+                and API keys.
+
+        Returns:
+            Configured ClassificationService instance.
+
+        Example:
+            from src.config.settings import get_settings
+            settings = get_settings()
+            service = ClassificationService.from_settings(settings)
+        """
+        from anthropic import Anthropic
+
+        # Create Anthropic client
+        anthropic_client = Anthropic(api_key=settings.anthropic_api_key)
+
+        # Load templates from configured path
+        template_loader = TemplateLoader.from_directory(settings.paths.templates)
+
+        # Build classification config from settings
+        config = ClassificationConfig(
+            model=settings.classification.model,
+            confidence_threshold=settings.classification.confidence_threshold,
+            max_tokens=settings.classification.max_tokens,
+            max_retries=settings.pipeline.max_retries,
+            base_backoff_seconds=settings.pipeline.base_backoff_seconds,
+            max_backoff_seconds=settings.pipeline.max_backoff_seconds,
+        )
+
+        return cls(
+            anthropic_client=anthropic_client,
+            template_loader=template_loader,
+            config=config,
         )
 
     async def classify(

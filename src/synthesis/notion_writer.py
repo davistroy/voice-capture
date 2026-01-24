@@ -9,7 +9,6 @@ Implements TDD section 13.1 and PRD section 8.2 requirements.
 
 import asyncio
 import logging
-import random
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -17,6 +16,7 @@ from typing import Any, Dict, List, Optional
 from notion_client import AsyncClient
 from notion_client.errors import APIResponseError, HTTPResponseError
 
+from src.common.backoff import calculate_backoff
 from src.synthesis.generator import SynthesisResult
 from src.synthesis.prompt_builder import IdeaReference, WeeklySummaryData
 from src.synthesis.notion_query import VoiceCapture
@@ -596,19 +596,21 @@ class NotionSummaryWriter:
     def _calculate_backoff(self, attempt: int) -> float:
         """Calculate exponential backoff with jitter.
 
+        Delegates to src.common.backoff.calculate_backoff.
+
         Args:
             attempt: Current retry attempt (0-indexed).
 
         Returns:
             Backoff delay in seconds.
         """
-        backoff = min(
-            self._base_backoff * (2 ** attempt),
-            self._max_backoff
+        return calculate_backoff(
+            attempt=attempt,
+            base_seconds=self._base_backoff,
+            max_seconds=self._max_backoff,
+            multiplier=2.0,
+            jitter_factor=0.1,
         )
-        # Add 10% jitter
-        jitter = backoff * 0.1 * random.random()
-        return backoff + jitter
 
     def _extract_retry_after(self, error: HTTPResponseError) -> float:
         """Extract Retry-After header value from rate limit response.

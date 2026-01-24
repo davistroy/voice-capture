@@ -587,3 +587,12 @@ class FolderWatcher:
         """
         parsed = self._validator.parse_filename(filename)
         return parsed.timestamp, parsed.device
+
+    @property
+    def file_validator(self) -> FileValidator:
+        """Get the file validator instance.
+
+        Exposed for components that need file validation
+        without full watcher functionality (e.g., HTTP server).
+        """
+        return self._validator

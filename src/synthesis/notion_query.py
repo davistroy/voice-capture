@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional
 from notion_client import AsyncClient
 from notion_client.errors import APIResponseError, HTTPResponseError
 
+from src.common.backoff import calculate_backoff
+
 logger = logging.getLogger(__name__)
 
 
@@ -554,19 +556,21 @@ class NotionQueryService:
     def _calculate_backoff(self, attempt: int) -> float:
         """Calculate exponential backoff delay.
 
+        Delegates to src.common.backoff.calculate_backoff.
+
         Args:
             attempt: Current retry attempt (0-indexed).
 
         Returns:
             Backoff delay in seconds.
         """
-        import random
-        base_backoff = 5.0
-        max_backoff = 300.0
-        backoff = min(base_backoff * (2 ** attempt), max_backoff)
-        # Add 10% jitter
-        jitter = backoff * 0.1 * random.random()
-        return backoff + jitter
+        return calculate_backoff(
+            attempt=attempt,
+            base_seconds=5.0,
+            max_seconds=300.0,
+            multiplier=2.0,
+            jitter_factor=0.1,
+        )
 
     def _extract_retry_after(self, error: HTTPResponseError) -> float:
         """Extract Retry-After header value from rate limit response.

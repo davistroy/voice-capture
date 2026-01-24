@@ -43,11 +43,15 @@ class TemplateLoader:
     Templates are loaded from a directory containing .yaml files.
     Files starting with '_' are treated as template examples and skipped.
 
-    Example usage:
+    Example usage (preferred - using factory method):
+        loader = TemplateLoader.from_directory(Path("config/templates"))
+        task_template = loader.get_template("task")
+        prompt_context = loader.build_classification_prompt_context()
+
+    Example usage (legacy - still supported):
         loader = TemplateLoader(Path("config/templates"))
         loader.load_all()
         task_template = loader.get_template("task")
-        prompt_context = loader.build_classification_prompt_context()
     """
 
     def __init__(self, templates_dir: Path):
@@ -60,6 +64,28 @@ class TemplateLoader:
         self.templates_dir = Path(templates_dir)
         self._templates: Dict[str, TemplateConfig] = {}
         self._load_errors: List[str] = []
+        self._loaded: bool = False
+
+    @classmethod
+    def from_directory(cls, templates_dir: Path) -> "TemplateLoader":
+        """Create and initialize a TemplateLoader from a directory.
+
+        Factory method that ensures templates are loaded immediately.
+        Preferred over direct construction.
+
+        Args:
+            templates_dir: Path to directory containing template YAML files.
+
+        Returns:
+            Initialized TemplateLoader with all templates loaded.
+
+        Raises:
+            FileNotFoundError: If templates_dir does not exist.
+            TemplateLoadError: If any template file is invalid.
+        """
+        loader = cls(templates_dir)
+        loader.load_all()
+        return loader
 
     @property
     def templates(self) -> Dict[str, TemplateConfig]:
@@ -142,6 +168,7 @@ class TemplateLoader:
                 logger.error(error_msg)
 
         logger.info(f"Loaded {loaded_count} templates from {self.templates_dir}")
+        self._loaded = True
         return loaded_count
 
     def _load_template_file(self, file_path: Path) -> TemplateConfig:
@@ -255,6 +282,14 @@ class TemplateLoader:
         Returns:
             TemplateConfig if found, None otherwise.
         """
+        if not self._loaded:
+            import warnings
+            warnings.warn(
+                "TemplateLoader.get_template() called before load_all(). "
+                "Use TemplateLoader.from_directory() for safer initialization.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         return self._templates.get(name)
 
     def get_enabled_templates(self) -> List[TemplateConfig]:

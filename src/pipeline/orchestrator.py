@@ -18,23 +18,27 @@ Work item 3.3 enhancements:
 - State preservation on retry (transcript not lost)
 - Circuit breaker for sustained failures
 - Improved error logging
+
+Work item 6.9: Masks secrets in error messages and notifications.
+
+Work item 6.8: Updated to use Protocol-based interfaces for loose coupling.
 """
 
 import asyncio
 import logging
-import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
+from src.common.secrets import mask_secrets
 from src.db.database import Database
 from src.db.models import CaptureRow
 from src.models.capture import ProcessingStatus
 from src.models.transcription import TranscriptionResult
 from src.models.classification import ClassificationResult
-from src.notion.client import NotionService, CaptureMetadata, NotionError
+from src.notion.client import CaptureMetadata, NotionError
 from src.pipeline.retry import (
     RetryConfig,
     CircuitBreaker,
@@ -46,12 +50,18 @@ from src.pipeline.retry import (
     build_detailed_error_log,
     PIPELINE_RETRY_CONFIG,
 )
-from src.transcription.service import TranscriptionService
+from src.pipeline.text_formatter import TextFormatter
+from src.pipeline.file_operations import FileOperations
 from src.transcription.base import TranscriptionError, InvalidAudioError
 
 if TYPE_CHECKING:
-    from src.classification import ClassificationService, TemplateLoader
-    from src.notifications.pushover import PushoverService
+    from src.classification import TemplateLoader
+    from src.interfaces import (
+        ITranscriptionService,
+        IClassificationService,
+        INotionService,
+        INotificationService,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -136,27 +146,35 @@ class PipelineOrchestrator:
         classification: Optional classification service (Phase 2+).
         template_loader: Optional template loader for accessing templates (Phase 2+).
         notifications: Optional notification service (Phase 3+).
+        file_operations: Optional FileOperations instance (created from failed_path if not provided).
     """
 
     def __init__(
         self,
         db: Database,
-        transcription: TranscriptionService,
-        notion: NotionService,
+        transcription: "ITranscriptionService",
+        notion: "INotionService",
         retry_config: Optional[RetryConfig] = None,
         failed_path: Optional[Path] = None,
-        classification: Optional["ClassificationService"] = None,
+        classification: Optional["IClassificationService"] = None,
         template_loader: Optional["TemplateLoader"] = None,
-        notifications: Optional["PushoverService"] = None,
+        notifications: Optional["INotificationService"] = None,
+        file_operations: Optional[FileOperations] = None,
     ):
         self._db = db
         self._transcription = transcription
         self._notion = notion
         self._retry_config = retry_config or PIPELINE_RETRY_CONFIG
-        self._failed_path = failed_path or Path("/app/failed")
         self._classification = classification  # None in Phase 1
         self._template_loader = template_loader  # None in Phase 1
         self._notifications = notifications  # None if notifications disabled
+
+        # Initialize file operations (work item 6.6: extracted helper class)
+        self._failed_path = failed_path or Path("/app/failed")
+        if file_operations is not None:
+            self._file_ops = file_operations
+        else:
+            self._file_ops = FileOperations.from_failed_path(self._failed_path, db)
 
         # Track notified failures to prevent duplicate notifications
         self._notified_failures: set[int] = set()
@@ -415,7 +433,7 @@ class PipelineOrchestrator:
                 template="general",
                 confidence=1.0,  # Always confident for generic
                 fields={},
-                title=self._generate_title_from_transcript(capture.transcript),
+                title=TextFormatter.generate_title(capture.transcript),
                 tags=[],
             )
 
@@ -504,12 +522,12 @@ class PipelineOrchestrator:
             # Build metadata
             metadata = CaptureMetadata(
                 captured_at=capture.captured_at or datetime.utcnow(),
-                device=self._format_device(capture.device),
+                device=TextFormatter.format_device_name(capture.device),
                 duration_seconds=capture.transcript_duration_seconds or 0.0,
             )
 
             # Generate title
-            title = capture.suggested_title or self._generate_title_from_transcript(capture.transcript)
+            title = capture.suggested_title or TextFormatter.generate_title(capture.transcript)
 
             # Build classification result if we have classification data (state preservation)
             classification = None
@@ -556,7 +574,8 @@ class PipelineOrchestrator:
             await self._db.mark_complete(capture_id)
 
             # Delete source audio file on success
-            await self._delete_source_file(capture)
+            file_path = Path(capture.current_path or capture.original_path)
+            await self._file_ops.delete_on_success(file_path)
 
             logger.info(
                 f"Capture {capture_id}: posted to Notion, page_id={page.id}, status -> complete"
@@ -654,7 +673,11 @@ class PipelineOrchestrator:
             # Max retries exceeded or non-retryable - move to failed
             reason = "non-retryable error" if not is_retryable else f"max retries ({self._retry_config.max_retries}) exceeded"
             await self._db.update_status(capture_id, "failed", error=classification.message)
-            await self._move_to_failed(capture)
+
+            # Move file to failed directory
+            source_path = Path(capture.current_path or capture.original_path)
+            await self._file_ops.move_to_failed(source_path, capture_id)
+
             logger.error(
                 f"Capture {capture_id}: {stage.value} failed permanently ({reason}): "
                 f"category={classification.category.value}, "
@@ -669,30 +692,6 @@ class PipelineOrchestrator:
             )
 
         return await self._db.get_capture_by_id(capture_id)
-
-    async def _move_to_failed(self, capture: CaptureRow) -> None:
-        """Move a capture's audio file to the failed directory.
-
-        Args:
-            capture: The capture whose file should be moved.
-        """
-        source_path = Path(capture.current_path or capture.original_path)
-
-        if not source_path.exists():
-            logger.warning(f"Cannot move file to failed - file not found: {source_path}")
-            return
-
-        # Ensure failed directory exists
-        self._failed_path.mkdir(parents=True, exist_ok=True)
-
-        # Move file
-        dest_path = self._failed_path / source_path.name
-        try:
-            shutil.move(str(source_path), str(dest_path))
-            await self._db.update_current_path(capture.id, str(dest_path))
-            logger.info(f"Moved failed file to: {dest_path}")
-        except Exception as e:
-            logger.error(f"Failed to move file to {dest_path}: {e}")
 
     async def _send_failure_notification(
         self,
@@ -709,6 +708,9 @@ class PipelineOrchestrator:
         Notifications are best-effort; failures don't affect pipeline operation.
         Tracks notified failures to prevent duplicate notifications for the same
         capture ID.
+
+        Per work item 6.9: Masks any secrets that may appear in error messages
+        before sending notifications.
 
         Args:
             capture: The capture that failed.
@@ -729,9 +731,12 @@ class PipelineOrchestrator:
             # page was created but something else failed)
             notion_page_url = capture.notion_page_url
 
+            # Mask any secrets that may appear in the error message (defense-in-depth)
+            masked_error_message = mask_secrets(error_message)
+
             success = await self._notifications.notify_processing_failure(
                 filename=capture.filename,
-                error_message=error_message,
+                error_message=masked_error_message,
                 stage=stage.value,
                 notion_page_url=notion_page_url,
             )
@@ -746,77 +751,6 @@ class PipelineOrchestrator:
         except Exception as e:
             # Notification failures should not affect pipeline operation
             logger.error(f"Error sending failure notification for capture {capture.id}: {e}")
-
-    async def _delete_source_file(self, capture: CaptureRow) -> None:
-        """Delete the source audio file after successful processing.
-
-        Per PRD: Audio deleted on success - files removed from Google Drive
-        after successful Notion post.
-
-        Args:
-            capture: The successfully processed capture.
-        """
-        file_path = Path(capture.current_path or capture.original_path)
-
-        if not file_path.exists():
-            logger.debug(f"Source file already deleted: {file_path}")
-            return
-
-        try:
-            file_path.unlink()
-            logger.info(f"Deleted source audio file: {file_path}")
-        except Exception as e:
-            # Non-fatal - log but don't fail the operation
-            logger.warning(f"Failed to delete source file {file_path}: {e}")
-
-    def _generate_title_from_transcript(self, transcript: Optional[str]) -> str:
-        """Generate a title from the transcript text.
-
-        Extracts the first sentence, limited to ~15 words.
-
-        Args:
-            transcript: The transcript text.
-
-        Returns:
-            A title string.
-        """
-        if not transcript:
-            return "Voice Capture"
-
-        # Find first sentence
-        text = transcript.strip()
-        for delimiter in [".", "!", "?"]:
-            pos = text.find(delimiter)
-            if pos != -1:
-                text = text[: pos + 1]
-                break
-
-        # Limit to ~15 words
-        words = text.split()
-        if len(words) > 15:
-            text = " ".join(words[:15]) + "..."
-
-        return text or "Voice Capture"
-
-    def _format_device(self, device: Optional[str]) -> str:
-        """Format device string for display.
-
-        Args:
-            device: Raw device string (e.g., "watch", "phone").
-
-        Returns:
-            Formatted device name (e.g., "Watch", "Phone", "Unknown").
-        """
-        if not device:
-            return "Unknown"
-
-        device_lower = device.lower()
-        if device_lower == "watch":
-            return "Watch"
-        elif device_lower == "phone":
-            return "Phone"
-        else:
-            return "Unknown"
 
     def _failure_result(self, capture: CaptureRow, stage: ProcessingStage) -> ProcessingResult:
         """Create a ProcessingResult for a failed capture.
@@ -934,7 +868,7 @@ class PipelineOrchestrator:
         self.clear_notification_tracking(capture_id)
 
         # If file was moved to failed directory, we need to move it back
-        if capture.current_path and self._failed_path in Path(capture.current_path).parents:
+        if capture.current_path and self._file_ops.is_in_failed_directory(Path(capture.current_path)):
             logger.info(f"Note: File is in failed directory, manual file move may be required")
 
         logger.info(f"Retrying capture {capture_id} from {target_status}")

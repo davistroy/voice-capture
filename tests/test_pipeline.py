@@ -831,66 +831,82 @@ class TestOrchestratorManualRetry:
 
 
 # =============================================================================
-# Title Generation Tests
+# Title Generation Tests (Work item 6.6: Now uses TextFormatter)
 # =============================================================================
 
 
 class TestOrchestratorTitleGeneration:
-    """Tests for title generation from transcript."""
+    """Tests for title generation from transcript.
 
-    def test_generate_title_from_short_transcript(self, orchestrator):
+    Work item 6.6: Title generation was extracted to TextFormatter class.
+    These tests verify the TextFormatter is correctly integrated.
+    """
+
+    def test_generate_title_from_short_transcript(self):
         """Verify title from short transcript."""
-        title = orchestrator._generate_title_from_transcript("Hello world.")
+        from src.pipeline.text_formatter import TextFormatter
+        title = TextFormatter.generate_title("Hello world.")
         assert title == "Hello world."
 
-    def test_generate_title_truncates_long_transcript(self, orchestrator):
+    def test_generate_title_truncates_long_transcript(self):
         """Verify long transcripts are truncated to ~15 words."""
+        from src.pipeline.text_formatter import TextFormatter
         long_text = " ".join(["word"] * 50)
-        title = orchestrator._generate_title_from_transcript(long_text)
+        title = TextFormatter.generate_title(long_text)
 
         words = title.replace("...", "").strip().split()
         assert len(words) <= 15
 
-    def test_generate_title_uses_first_sentence(self, orchestrator):
+    def test_generate_title_uses_first_sentence(self):
         """Verify only first sentence is used."""
+        from src.pipeline.text_formatter import TextFormatter
         text = "This is the first sentence. This is the second."
-        title = orchestrator._generate_title_from_transcript(text)
+        title = TextFormatter.generate_title(text)
         assert title == "This is the first sentence."
 
-    def test_generate_title_handles_none(self, orchestrator):
+    def test_generate_title_handles_none(self):
         """Verify None transcript produces default title."""
-        title = orchestrator._generate_title_from_transcript(None)
+        from src.pipeline.text_formatter import TextFormatter
+        title = TextFormatter.generate_title(None)
         assert title == "Voice Capture"
 
-    def test_generate_title_handles_empty(self, orchestrator):
+    def test_generate_title_handles_empty(self):
         """Verify empty transcript produces default title."""
-        title = orchestrator._generate_title_from_transcript("")
+        from src.pipeline.text_formatter import TextFormatter
+        title = TextFormatter.generate_title("")
         assert title == "Voice Capture"
 
 
 # =============================================================================
-# Device Formatting Tests
+# Device Formatting Tests (Work item 6.6: Now uses TextFormatter)
 # =============================================================================
 
 
 class TestOrchestratorDeviceFormatting:
-    """Tests for device string formatting."""
+    """Tests for device string formatting.
 
-    def test_format_device_watch(self, orchestrator):
+    Work item 6.6: Device formatting was extracted to TextFormatter class.
+    These tests verify the TextFormatter is correctly integrated.
+    """
+
+    def test_format_device_watch(self):
         """Verify 'watch' is formatted as 'Watch'."""
-        assert orchestrator._format_device("watch") == "Watch"
-        assert orchestrator._format_device("WATCH") == "Watch"
+        from src.pipeline.text_formatter import TextFormatter
+        assert TextFormatter.format_device_name("watch") == "Watch"
+        assert TextFormatter.format_device_name("WATCH") == "Watch"
 
-    def test_format_device_phone(self, orchestrator):
+    def test_format_device_phone(self):
         """Verify 'phone' is formatted as 'Phone'."""
-        assert orchestrator._format_device("phone") == "Phone"
-        assert orchestrator._format_device("PHONE") == "Phone"
+        from src.pipeline.text_formatter import TextFormatter
+        assert TextFormatter.format_device_name("phone") == "Phone"
+        assert TextFormatter.format_device_name("PHONE") == "Phone"
 
-    def test_format_device_unknown(self, orchestrator):
+    def test_format_device_unknown(self):
         """Verify unknown devices default to 'Unknown'."""
-        assert orchestrator._format_device("tablet") == "Unknown"
-        assert orchestrator._format_device(None) == "Unknown"
-        assert orchestrator._format_device("") == "Unknown"
+        from src.pipeline.text_formatter import TextFormatter
+        assert TextFormatter.format_device_name("tablet") == "Unknown"
+        assert TextFormatter.format_device_name(None) == "Unknown"
+        assert TextFormatter.format_device_name("") == "Unknown"
 
 
 # =============================================================================
