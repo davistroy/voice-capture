@@ -859,6 +859,154 @@ class PushoverService:
 | High failure rate (>20%) | 1 (High) | "Alert: {failure_rate}% failure rate today" |
 | Queue backup (>10 items) | 0 (Normal) | "Queue backed up: {count} items pending" |
 
+### 4.6 HTTP Upload Server (Alternative Ingestion)
+
+**Module:** `src/http/server.py`
+
+**Purpose:** Provide direct HTTP upload endpoint as alternative to rclone/Google Drive sync. Enables immediate processing via Tailscale private network.
+
+**Technology:** aiohttp (already a dependency)
+
+```python
+class HttpUploadServer:
+    """HTTP server for direct audio file uploads."""
+
+    def __init__(
+        self,
+        settings: HttpServerSettings,
+        paths: PathsSettings,
+        db: Database,
+        file_validator: FileValidator,
+        orchestrator: PipelineOrchestrator,
+    ):
+        ...
+
+    async def start(self) -> None:
+        """Start the HTTP server."""
+        ...
+
+    async def stop(self) -> None:
+        """Gracefully stop the server."""
+        ...
+```
+
+**API Endpoints:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/capture` | Upload audio file for processing |
+| GET | `/api/v1/capture/{id}` | Check capture status |
+| GET | `/health` | Health check endpoint |
+
+**Upload Endpoint Specification:**
+
+```
+POST /api/v1/capture
+Content-Type: multipart/form-data
+
+Parameters:
+- audio (file, required): Audio file (m4a, mp3, wav, webm)
+- device (string, optional): "watch", "phone", or "http" (default: "http")
+
+Query Parameters:
+- wait (boolean, optional): Wait for processing to complete (default: true)
+
+Headers:
+- X-API-Key (string, optional): API key if authentication enabled
+
+Response (sync mode, wait=true):
+{
+  "success": true,
+  "capture_id": 42,
+  "status": "complete",
+  "template": "task",
+  "notion_url": "https://notion.so/...",
+  "processing_time_ms": 3450
+}
+
+Response (async mode, wait=false):
+{
+  "success": true,
+  "capture_id": 42,
+  "status": "pending",
+  "message": "Processing started"
+}
+
+Error Response:
+{
+  "success": false,
+  "error": "error_code",
+  "message": "Human-readable message",
+  "capture_id": null
+}
+```
+
+**Error Codes:**
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `missing_file` | 400 | No audio file in request |
+| `invalid_audio_format` | 400 | File is not valid audio |
+| `file_too_large` | 413 | File exceeds max_upload_mb |
+| `unauthorized` | 401 | Invalid or missing API key |
+| `processing_failed` | 500 | Pipeline error during processing |
+| `timeout` | 504 | Processing exceeded timeout |
+
+**Request Flow:**
+
+```
+1. Receive multipart POST request
+2. Validate API key (if configured)
+3. Extract audio file from form data
+4. Validate audio format (reuse FileValidator)
+5. Generate filename: YYYYMMDD_HHMMSS_http.m4a
+6. Write file to processing/ directory (atomic)
+7. Insert database record (status=pending)
+8. If wait=true:
+   a. Call orchestrator.process_capture(capture_id)
+   b. Return result with notion_url
+9. If wait=false:
+   a. Queue for background processing
+   b. Return capture_id immediately
+```
+
+**Configuration:**
+
+```python
+class HttpServerSettings(BaseModel):
+    enabled: bool = False          # Disabled by default
+    host: str = "0.0.0.0"          # Bind address
+    port: int = 8080               # Listen port
+    api_key: str | None = None     # Optional auth
+    max_upload_mb: int = 100       # Max file size
+    request_timeout_seconds: int = 60  # Request timeout
+```
+
+**Security Considerations:**
+
+1. **Network Security:** Designed for use with Tailscale (private network)
+2. **Authentication:** Optional API key via X-API-Key header
+3. **File Validation:** Reuses existing FileValidator (magic bytes check)
+4. **Rate Limiting:** Not implemented (low volume, trusted network)
+5. **HTTPS:** Tailscale provides encryption; HTTP acceptable on Tailscale network
+
+**Integration with Main Application:**
+
+The HTTP server runs alongside the folder watcher. When a file is uploaded:
+- It bypasses the inbox/ directory and settle delay
+- Written directly to processing/ (file is complete)
+- Inserted into database immediately
+- Processed by same pipeline as watcher files
+
+```python
+# In VoiceCaptureApp.run():
+tasks = []
+tasks.append(self._watcher.start())
+if self._http_server:
+    tasks.append(self._http_server.start())
+await asyncio.gather(*tasks)
+```
+
 ---
 
 ## 5. Processing Pipeline
@@ -999,6 +1147,11 @@ CLASSIFICATION_CONFIDENCE_THRESHOLD=0.7
 MAX_RETRIES=3
 FILE_SETTLE_DELAY_SECONDS=2.0
 RCLONE_SYNC_INTERVAL=180
+
+# HTTP Upload Server (optional alternative to rclone)
+HTTP_ENABLED=false
+HTTP_PORT=8080
+HTTP_API_KEY=                    # Optional, leave empty to disable auth
 ```
 
 ### 6.2 Configuration File
@@ -1053,6 +1206,15 @@ health_check:
 audio:
   max_size_mb: 100
   max_duration_seconds: 3600  # 1 hour
+
+# HTTP Upload Server (alternative to rclone sync)
+http:
+  enabled: ${HTTP_ENABLED:false}
+  host: "0.0.0.0"
+  port: ${HTTP_PORT:8080}
+  api_key: ${HTTP_API_KEY:}    # Optional authentication
+  max_upload_mb: 100
+  request_timeout_seconds: 60
 ```
 
 ### 6.3 Global Classification Settings
@@ -1370,6 +1532,8 @@ services:
     build: .
     container_name: voice-capture
     restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:8080"  # HTTP upload endpoint (optional)
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -1377,6 +1541,9 @@ services:
       - NOTION_VOICE_CAPTURES_DB_ID=${NOTION_VOICE_CAPTURES_DB_ID}
       - PUSHOVER_API_TOKEN=${PUSHOVER_API_TOKEN}
       - PUSHOVER_USER_KEY=${PUSHOVER_USER_KEY}
+      - HTTP_ENABLED=${HTTP_ENABLED:-false}
+      - HTTP_PORT=${HTTP_PORT:-8080}
+      - HTTP_API_KEY=${HTTP_API_KEY:-}
     volumes:
       - ./data:/app/data
       - ./config:/app/config:ro
@@ -1788,6 +1955,9 @@ All technical clarifications have been resolved. Summary of decisions:
 | **Weekly Summaries DB** | Separate database with `NOTION_WEEKLY_SUMMARIES_DB_ID` env var |
 | **Test fixtures** | Mock API for unit tests; TTS-generated audio for integration tests |
 | **Supporting classes** | Define during implementation — core models are specified |
+| **HTTP upload endpoint** | Optional alternative to rclone; uses aiohttp; disabled by default |
+| **HTTP authentication** | Optional API key via X-API-Key header; Tailscale provides network security |
+| **HTTP vs rclone** | Both can coexist; HTTP for immediate processing, rclone as fallback |
 
 ---
 
@@ -1853,6 +2023,11 @@ NOTION_WEEKLY_SUMMARIES_DB_ID=your-database-id-here
 
 # Logging (optional)
 # VOICE_CAPTURE_LOG_LEVEL=INFO
+
+# HTTP Upload Server (optional alternative to rclone)
+# HTTP_ENABLED=true
+# HTTP_PORT=8080
+# HTTP_API_KEY=your-secret-key-here
 ```
 
 ### config/templates/_template.yaml

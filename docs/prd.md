@@ -59,11 +59,16 @@ This system transforms ephemeral voice captures into structured, searchable, syn
 │   Action Button → Just Press Record                                      │
 │                          │                                               │
 │                          ▼                                               │
-│   iOS Shortcut (on recording complete) → Save to Google Drive folder    │
-│                                                                          │
+│   iOS Shortcut (on recording complete):                                 │
+│     Option A: Save to Google Drive folder (rclone sync)                 │
+│     Option B: HTTP POST to home server (Tailscale) ─────────────────┐   │
+│                                                                      │   │
 └─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
+                                    │                                  │
+                                    ▼                                  │
+                            [Google Drive]                             │
+                                    │                                  │
+                                    ▼                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         PROCESSING LAYER                                 │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -166,7 +171,70 @@ ACTION 3: Haptic confirmation + brief banner notification
 `{timestamp}_{device}.m4a`
 Example: `2026-01-20T143022_watch.m4a`
 
-### 6.2 Google Drive Sync & Folder Watcher Service
+### 6.2 HTTP Upload Endpoint (Alternative)
+
+**Purpose:** Direct iOS → server upload via Tailscale, eliminating Google Drive sync latency.
+
+**Why This Exists:**
+- Google Drive sync via rclone introduces 30-90 second latency
+- iOS Shortcuts cannot save directly to Google Drive in all scenarios
+- Tailscale provides secure private networking between iOS and home server
+- Direct upload enables immediate processing and instant feedback
+
+**Technology:** aiohttp server (Python, already a dependency)
+
+**Flow:**
+```
+iOS Shortcut → HTTP POST → Home Server → Pipeline → Notion → Response to iOS
+```
+
+**Endpoint:** `POST /api/v1/capture`
+
+**Request:**
+- Multipart form data with audio file
+- Optional: `device` field (watch/phone)
+- Optional: `X-API-Key` header for authentication
+
+**Response (sync mode):**
+```json
+{
+  "success": true,
+  "capture_id": 42,
+  "status": "complete",
+  "template": "task",
+  "notion_url": "https://notion.so/page-id",
+  "processing_time_ms": 3450
+}
+```
+
+**iOS Shortcut for HTTP Upload:**
+```
+TRIGGER: Just Press Record recording completed
+ACTION 1: Get latest recording from Just Press Record
+ACTION 2: Get Contents of URL
+         - URL: http://[tailscale-hostname]:8080/api/v1/capture
+         - Method: POST
+         - Body: Form (audio file + device)
+ACTION 3: Parse JSON response
+ACTION 4: If success: Haptic + notification with Notion URL
+          Else: Show error notification
+```
+
+**Advantages over rclone:**
+- Immediate processing (no polling delay)
+- Instant feedback (success/failure + Notion URL)
+- Works on local network without cloud dependency
+- Simpler debugging (direct HTTP errors)
+
+**When to use rclone vs HTTP:**
+- **Use HTTP:** When Tailscale is configured and low latency is desired
+- **Use rclone:** As fallback, for batch uploads, or when Tailscale unavailable
+
+**Note:** Both methods can coexist. The HTTP endpoint and folder watcher run concurrently.
+
+---
+
+### 6.3 Google Drive Sync & Folder Watcher Service
 
 **Sync Technology:** rclone with Google Drive
 
@@ -200,7 +268,7 @@ rclone mount gdrive:/VoiceCaptures /home/user/gdrive --vfs-cache-mode writes
 - SQLite database tracking: filename, status, timestamps, retry count, error messages
 - Statuses: `pending`, `transcribing`, `classifying`, `posting`, `complete`, `failed`
 
-### 6.3 Transcription Service
+### 6.4 Transcription Service
 
 **Selected:** OpenAI Whisper API for MVP, with abstraction layer to swap to local Whisper later if volume justifies.
 
@@ -222,7 +290,7 @@ def transcribe(audio_path: str) -> TranscriptionResult:
 - Retry 3x with exponential backoff on API errors
 - On persistent failure: move file to `/failed/`, notify user
 
-### 6.4 Classification & Structuring Service
+### 6.5 Classification & Structuring Service
 
 **Input:** Raw transcript text + metadata (duration, timestamp, device)
 
@@ -258,7 +326,7 @@ Respond with JSON:
 }
 ```
 
-### 6.5 Notion Integration Service
+### 6.6 Notion Integration Service
 
 **Authentication:** Notion API key (internal integration)
 
@@ -271,7 +339,7 @@ Respond with JSON:
 - On success: delete source audio, update status
 - On failure: retry 3x, then notify
 
-### 6.6 Notification Service
+### 6.7 Notification Service
 
 **Selected:** Pushover ($5 one-time)
 
@@ -737,6 +805,8 @@ All architectural questions have been resolved. This section documents the decis
 | **Mood tracking** | Yes, 5 options: Energized / Focused / Neutral / Tired / Frustrated |
 | **Classification threshold** | 0.7 confidence; below that → General template |
 | **Template extensibility** | Config-driven YAML in `config/templates/` |
+| **HTTP upload endpoint** | Optional alternative to rclone; direct iOS → server via Tailscale |
+| **HTTP authentication** | Optional API key (Tailscale provides network-level security) |
 
 ---
 
