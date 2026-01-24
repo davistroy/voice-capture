@@ -144,3 +144,128 @@ class TestSettings:
         # Valid values should work
         settings = reload_settings()
         assert 0.0 <= settings.classification.confidence_threshold <= 1.0
+
+
+class TestHttpServerSettings:
+    """Test HTTP server settings loading and validation."""
+
+    def test_http_settings_defaults(self) -> None:
+        """Test that HTTP settings have correct defaults."""
+        settings = reload_settings()
+
+        # HTTP server is disabled by default (backward compatible)
+        assert settings.http.enabled is False
+        assert settings.http.host == "0.0.0.0"
+        assert settings.http.port == 8080
+        assert settings.http.api_key is None
+        assert settings.http.max_upload_mb == 100
+        assert settings.http.request_timeout_seconds == 60
+        assert settings.http.cors_origins == []
+
+    def test_http_settings_from_environment(self) -> None:
+        """Test that HTTP settings can be loaded from environment variables."""
+        os.environ["HTTP_ENABLED"] = "true"
+        os.environ["HTTP_PORT"] = "9090"
+        os.environ["HTTP_HOST"] = "127.0.0.1"
+        os.environ["HTTP_API_KEY"] = "test-api-key-123"
+        os.environ["HTTP_MAX_UPLOAD_MB"] = "50"
+        os.environ["HTTP_REQUEST_TIMEOUT_SECONDS"] = "120"
+
+        try:
+            settings = reload_settings()
+
+            assert settings.http.enabled is True
+            assert settings.http.port == 9090
+            assert settings.http.host == "127.0.0.1"
+            assert settings.http.api_key == "test-api-key-123"
+            assert settings.http.max_upload_mb == 50
+            assert settings.http.request_timeout_seconds == 120
+        finally:
+            os.environ.pop("HTTP_ENABLED", None)
+            os.environ.pop("HTTP_PORT", None)
+            os.environ.pop("HTTP_HOST", None)
+            os.environ.pop("HTTP_API_KEY", None)
+            os.environ.pop("HTTP_MAX_UPLOAD_MB", None)
+            os.environ.pop("HTTP_REQUEST_TIMEOUT_SECONDS", None)
+            reload_settings()
+
+    def test_http_port_validation(self) -> None:
+        """Test that HTTP port is validated within valid range."""
+        from pydantic import ValidationError
+        from src.config.settings import HttpServerSettings
+
+        # Valid ports should work
+        valid_settings = HttpServerSettings(port=8080)
+        assert valid_settings.port == 8080
+
+        valid_settings = HttpServerSettings(port=1)
+        assert valid_settings.port == 1
+
+        valid_settings = HttpServerSettings(port=65535)
+        assert valid_settings.port == 65535
+
+        # Invalid ports should raise validation error
+        with pytest.raises(ValidationError):
+            HttpServerSettings(port=0)
+
+        with pytest.raises(ValidationError):
+            HttpServerSettings(port=65536)
+
+    def test_http_max_upload_validation(self) -> None:
+        """Test that max upload size is validated."""
+        from pydantic import ValidationError
+        from src.config.settings import HttpServerSettings
+
+        # Valid values should work
+        valid_settings = HttpServerSettings(max_upload_mb=1)
+        assert valid_settings.max_upload_mb == 1
+
+        valid_settings = HttpServerSettings(max_upload_mb=500)
+        assert valid_settings.max_upload_mb == 500
+
+        # Invalid values should raise validation error
+        with pytest.raises(ValidationError):
+            HttpServerSettings(max_upload_mb=0)
+
+        with pytest.raises(ValidationError):
+            HttpServerSettings(max_upload_mb=501)
+
+    def test_http_timeout_validation(self) -> None:
+        """Test that request timeout is validated."""
+        from pydantic import ValidationError
+        from src.config.settings import HttpServerSettings
+
+        # Valid values should work
+        valid_settings = HttpServerSettings(request_timeout_seconds=10)
+        assert valid_settings.request_timeout_seconds == 10
+
+        valid_settings = HttpServerSettings(request_timeout_seconds=300)
+        assert valid_settings.request_timeout_seconds == 300
+
+        # Invalid values should raise validation error
+        with pytest.raises(ValidationError):
+            HttpServerSettings(request_timeout_seconds=9)
+
+        with pytest.raises(ValidationError):
+            HttpServerSettings(request_timeout_seconds=301)
+
+    def test_http_cors_origins(self) -> None:
+        """Test that CORS origins can be configured."""
+        from src.config.settings import HttpServerSettings
+
+        # Empty list by default
+        settings = HttpServerSettings()
+        assert settings.cors_origins == []
+
+        # Can set custom origins
+        settings = HttpServerSettings(cors_origins=["http://localhost:3000", "https://example.com"])
+        assert len(settings.cors_origins) == 2
+        assert "http://localhost:3000" in settings.cors_origins
+        assert "https://example.com" in settings.cors_origins
+
+    def test_http_disabled_by_default_no_breaking_change(self) -> None:
+        """Test that HTTP is disabled by default to ensure backward compatibility."""
+        # This test ensures we don't accidentally enable HTTP by default
+        # which would be a breaking change for existing deployments
+        settings = reload_settings()
+        assert settings.http.enabled is False, "HTTP must be disabled by default for backward compatibility"
