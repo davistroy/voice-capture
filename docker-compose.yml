@@ -10,8 +10,6 @@
 #   2. Configure rclone with Google Drive (see scripts/rclone/setup.sh)
 #   3. Place rclone.conf in ./rclone-config/
 
-version: '3.8'
-
 services:
   # ==========================================================================
   # Voice Capture Processing Service
@@ -94,35 +92,31 @@ services:
 
     # Override entrypoint for continuous sync loop
     entrypoint: /bin/sh
-    command: >
-      -c "
-        echo 'Starting rclone sync loop...'
-        echo 'Sync interval: ${RCLONE_SYNC_INTERVAL:-180} seconds'
+    command:
+      - -c
+      - |
+        echo "Starting rclone sync loop..."
+        echo "Sync interval: $${RCLONE_SYNC_INTERVAL:-180} seconds"
         while true; do
-          echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Starting sync...\"
-          rclone sync gdrive:/VoiceCaptures/inbox /data/inbox \
-            --checksum \
-            --verbose \
-            --log-file=/data/logs/rclone.log \
-            --log-level=INFO
-          SYNC_RESULT=$?
-          if [ $SYNC_RESULT -eq 0 ]; then
-            echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Sync completed successfully\"
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting sync..."
+          rclone sync gdrive:/VoiceCaptures/inbox /data/inbox --checksum --log-file=/data/logs/rclone.log --log-level=INFO
+          SYNC_RESULT=$$?
+          if [ $$SYNC_RESULT -eq 0 ]; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sync completed successfully"
           else
-            echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Sync failed with code: $SYNC_RESULT\"
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sync failed with code: $$SYNC_RESULT"
           fi
-          echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Sleeping for ${RCLONE_SYNC_INTERVAL:-180} seconds...\"
-          sleep ${RCLONE_SYNC_INTERVAL:-180}
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sleeping for $${RCLONE_SYNC_INTERVAL:-180} seconds..."
+          sleep $${RCLONE_SYNC_INTERVAL:-180}
         done
-      "
 
     environment:
       # Sync interval in seconds (default: 3 minutes)
       - RCLONE_SYNC_INTERVAL=${RCLONE_SYNC_INTERVAL:-180}
 
     volumes:
-      # rclone configuration (contains OAuth tokens - read-only for security)
-      - ./rclone-config:/config/rclone:ro
+      # rclone configuration (contains OAuth tokens - writable for token refresh)
+      - ./rclone-config:/config/rclone
       # Inbox directory (shared with voice-capture service)
       - voice-capture-inbox:/data/inbox
       # Logs directory for rclone logs
