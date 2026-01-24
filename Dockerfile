@@ -18,9 +18,10 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Install Python dependencies
-COPY requirements.txt .
+# Use requirements.lock for reproducible production builds with pinned versions
+COPY requirements.lock .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.lock
 
 # =============================================================================
 # Runtime stage - minimal image

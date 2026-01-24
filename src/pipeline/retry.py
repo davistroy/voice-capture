@@ -3,13 +3,17 @@
 Provides exponential backoff with jitter calculation per TDD Section 5.2,
 plus error categorization (retryable vs non-retryable) and circuit breaker
 pattern for sustained failures per work item 3.3.
+
+Work item 6.9: Includes secret masking for error logs.
 """
 
-import random
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Set, Type
+
+from src.common.backoff import calculate_backoff_with_retry_after
+from src.common.secrets import mask_secrets
 
 
 class ErrorCategory(Enum):
@@ -337,6 +341,8 @@ class RetryConfig:
         Jitter adds a random value between 0 and (backoff * jitter_factor)
         to prevent thundering herd effects.
 
+        Delegates to src.common.backoff.calculate_backoff_with_retry_after.
+
         Args:
             retry_count: Current retry attempt (0-based).
                          0 = first retry, 1 = second retry, etc.
@@ -353,22 +359,14 @@ class RetryConfig:
             - retry 3: 40.0-44.0 seconds
             ...capped at 300 + jitter
         """
-        # Use explicit retry_after if provided
-        if retry_after is not None and retry_after > 0:
-            # Still add a small jitter to prevent thundering herd
-            jitter = retry_after * self.jitter_factor * random.random()
-            return retry_after + jitter
-
-        # Calculate base exponential backoff
-        backoff = min(
-            self.base_backoff_seconds * (self.backoff_multiplier ** retry_count),
-            self.max_backoff_seconds,
+        return calculate_backoff_with_retry_after(
+            attempt=retry_count,
+            retry_after=retry_after,
+            base_seconds=self.base_backoff_seconds,
+            max_seconds=self.max_backoff_seconds,
+            multiplier=self.backoff_multiplier,
+            jitter_factor=self.jitter_factor,
         )
-
-        # Add jitter (random value between 0 and jitter_factor * backoff)
-        jitter = backoff * self.jitter_factor * random.random()
-
-        return backoff + jitter
 
     def should_retry(self, current_retry_count: int) -> bool:
         """Check if another retry attempt is allowed.
@@ -416,6 +414,7 @@ def build_detailed_error_log(
     """Build a detailed error log entry for the failure_log table.
 
     Per work item 3.3: Improve error messages in failure_log table.
+    Per work item 6.9: Masks any secrets that may appear in error messages.
 
     Args:
         capture_id: ID of the capture being processed.
@@ -425,13 +424,13 @@ def build_detailed_error_log(
         classification: Error classification result.
 
     Returns:
-        Dict with comprehensive error details for logging.
+        Dict with comprehensive error details for logging (secrets masked).
     """
     details = {
         "capture_id": capture_id,
         "stage": stage,
         "error_type": classification.error_type,
-        "error_message": classification.message,
+        "error_message": mask_secrets(classification.message),
         "error_category": classification.category.value,
         "retry_count": retry_count,
         "is_retryable": classification.category == ErrorCategory.RETRYABLE,
@@ -441,13 +440,19 @@ def build_detailed_error_log(
     if classification.retry_after:
         details["retry_after_hint"] = classification.retry_after
 
-    # Add classification details
+    # Add classification details (mask any error messages in details)
     if classification.details:
-        details.update(classification.details)
+        masked_details = {}
+        for key, value in classification.details.items():
+            if isinstance(value, str) and "error" in key.lower():
+                masked_details[key] = mask_secrets(value)
+            else:
+                masked_details[key] = value
+        details.update(masked_details)
 
-    # Add traceback info for debugging
+    # Add traceback info for debugging (masked for secrets)
     import traceback
-    details["traceback"] = traceback.format_exc()
+    details["traceback"] = mask_secrets(traceback.format_exc())
 
     return details
 

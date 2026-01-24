@@ -1,11 +1,15 @@
-"""Async SQLite database operations for Voice Capture.
+"""Async SQLite database facade for Voice Capture.
 
-Uses aiosqlite for async connection management with a simple connection pool.
-All JSON fields are stored as TEXT with json.dumps/loads.
+This module provides the Database class which acts as a facade over
+the repository pattern implementation. It maintains backward compatibility
+with existing code while delegating to specialized repositories.
+
+The facade pattern provides:
+- A unified interface for all database operations
+- Backward compatibility with existing method signatures
+- Access to specialized repositories for advanced use cases
 """
 
-import asyncio
-import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -14,99 +18,39 @@ from typing import Any, AsyncIterator, Optional
 
 import aiosqlite
 
+from src.db.connection import ConnectionPool, SCHEMA_SQL, VALID_STATUSES
 from src.db.models import CaptureRow, DailyStatsRow, FailureLogRow
+from src.db.repositories import (
+    CaptureRepository,
+    FailureLogRepository,
+    StatisticsRepository,
+)
 
 logger = logging.getLogger(__name__)
 
-
-# Schema definition matching TDD Section 3.1 exactly
-SCHEMA_SQL = """
--- Main processing queue
-CREATE TABLE IF NOT EXISTS captures (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    filename TEXT NOT NULL UNIQUE,
-    original_path TEXT NOT NULL,
-    current_path TEXT,
-    device TEXT,
-    captured_at TIMESTAMP,
-    source TEXT DEFAULT 'watcher',  -- Upload source: 'watcher' or 'http'
-
-    -- Processing state
-    status TEXT NOT NULL DEFAULT 'pending',
-    -- Values: pending, transcribing, classifying, posting, complete, failed
-
-    retry_count INTEGER DEFAULT 0,
-    last_error TEXT,
-    last_attempt_at TIMESTAMP,
-
-    -- Transcription results
-    transcript TEXT,
-    transcript_duration_seconds REAL,
-    transcript_language TEXT,
-
-    -- Classification results
-    template_name TEXT,
-    classification_confidence REAL,
-    extracted_fields JSON,
-    suggested_title TEXT,
-    tags JSON,
-
-    -- Notion results
-    notion_page_id TEXT,
-    notion_page_url TEXT,
-
-    -- Timestamps
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_captures_status ON captures(status);
-CREATE INDEX IF NOT EXISTS idx_captures_captured_at ON captures(captured_at);
-CREATE INDEX IF NOT EXISTS idx_captures_source ON captures(source);
-
--- Failure history for debugging
-CREATE TABLE IF NOT EXISTS failure_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    capture_id INTEGER NOT NULL,
-    stage TEXT NOT NULL,
-    error_type TEXT,
-    error_message TEXT,
-    error_details JSON,
-    occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (capture_id) REFERENCES captures(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_failure_log_capture_id ON failure_log(capture_id);
-
--- Daily statistics for health monitoring
-CREATE TABLE IF NOT EXISTS daily_stats (
-    date TEXT PRIMARY KEY,
-    captures_received INTEGER DEFAULT 0,
-    captures_completed INTEGER DEFAULT 0,
-    captures_failed INTEGER DEFAULT 0,
-    total_audio_seconds REAL DEFAULT 0,
-    avg_processing_time_seconds REAL,
-    template_breakdown JSON
-);
-"""
-
-# Valid status values for state machine
-VALID_STATUSES = {"pending", "transcribing", "classifying", "posting", "complete", "failed"}
+# Re-export for backward compatibility
+__all__ = ["Database", "SCHEMA_SQL", "VALID_STATUSES"]
 
 
 class Database:
-    """Async SQLite database connection manager with CRUD operations.
+    """Async SQLite database facade with backward-compatible interface.
 
     Provides connection pooling and all required database operations for
-    the voice capture processing pipeline.
+    the voice capture processing pipeline. Internally delegates to
+    specialized repository classes.
+
+    For new code, consider using the repository classes directly via
+    the `captures`, `failures`, and `statistics` attributes.
 
     Usage:
         db = Database(Path("/path/to/database.db"))
         await db.initialize()
 
-        # Use database
+        # Traditional interface (backward compatible)
         capture_id = await db.insert_capture(...)
+
+        # Repository interface (recommended for new code)
+        capture_id = await db.captures.insert(...)
 
         # Close when done
         await db.close()
@@ -117,7 +61,7 @@ class Database:
     """
 
     def __init__(self, db_path: Path, pool_size: int = 5):
-        """Initialize database manager.
+        """Initialize database facade.
 
         Args:
             db_path: Path to SQLite database file
@@ -125,9 +69,17 @@ class Database:
         """
         self.db_path = db_path
         self.pool_size = pool_size
-        self._pool: asyncio.Queue[aiosqlite.Connection] = asyncio.Queue(maxsize=pool_size)
-        self._initialized = False
-        self._lock = asyncio.Lock()
+        self._pool = ConnectionPool(db_path, pool_size)
+
+        # Initialize repositories
+        self.captures = CaptureRepository(self._pool)
+        self.failures = FailureLogRepository(self._pool)
+        self.statistics = StatisticsRepository(self._pool)
+
+    @property
+    def _initialized(self) -> bool:
+        """Check if database is initialized (for backward compatibility)."""
+        return self._pool.initialized
 
     async def initialize(self) -> None:
         """Initialize database and create schema.
@@ -135,43 +87,11 @@ class Database:
         Creates the database file and all tables/indexes if they don't exist.
         Safe to call multiple times.
         """
-        async with self._lock:
-            if self._initialized:
-                return
-
-            # Ensure parent directory exists
-            self.db_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Create initial connection to setup schema
-            conn = await aiosqlite.connect(self.db_path)
-            conn.row_factory = aiosqlite.Row
-            try:
-                await conn.executescript(SCHEMA_SQL)
-                await conn.commit()
-                logger.info(f"Database initialized at {self.db_path}")
-            finally:
-                await conn.close()
-
-            # Pre-populate connection pool
-            for _ in range(self.pool_size):
-                conn = await aiosqlite.connect(self.db_path)
-                conn.row_factory = aiosqlite.Row
-                await self._pool.put(conn)
-
-            self._initialized = True
+        await self._pool.initialize()
 
     async def close(self) -> None:
         """Close all database connections."""
-        async with self._lock:
-            if not self._initialized:
-                return
-
-            while not self._pool.empty():
-                conn = await self._pool.get()
-                await conn.close()
-
-            self._initialized = False
-            logger.info("Database connections closed")
+        await self._pool.close()
 
     async def __aenter__(self) -> "Database":
         """Async context manager entry."""
@@ -187,18 +107,13 @@ class Database:
         """Get a connection from the pool.
 
         Yields a connection and returns it to the pool when done.
+        For internal use and testing.
         """
-        if not self._initialized:
-            raise RuntimeError("Database not initialized. Call initialize() first.")
-
-        conn = await self._pool.get()
-        try:
+        async with self._pool.acquire() as conn:
             yield conn
-        finally:
-            await self._pool.put(conn)
 
     # =========================================================================
-    # Capture CRUD Operations
+    # Capture Operations (delegating to CaptureRepository)
     # =========================================================================
 
     async def insert_capture(
@@ -226,25 +141,14 @@ class Database:
         Raises:
             sqlite3.IntegrityError: If filename already exists
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                INSERT INTO captures (filename, original_path, device, captured_at, current_path, source)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    filename,
-                    original_path,
-                    device,
-                    captured_at.isoformat() if captured_at else None,
-                    current_path,
-                    source,
-                ),
-            )
-            await conn.commit()
-            capture_id = cursor.lastrowid
-            logger.debug(f"Inserted capture: id={capture_id}, filename={filename}, source={source}")
-            return capture_id
+        return await self.captures.insert(
+            filename=filename,
+            original_path=original_path,
+            device=device,
+            captured_at=captured_at,
+            current_path=current_path,
+            source=source,
+        )
 
     async def update_status(
         self,
@@ -265,25 +169,7 @@ class Database:
         Raises:
             ValueError: If status is not a valid state
         """
-        if status not in VALID_STATUSES:
-            raise ValueError(f"Invalid status: {status}. Must be one of {VALID_STATUSES}")
-
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET status = ?, last_error = ?, last_attempt_at = ?, updated_at = ?
-                WHERE id = ?
-                """,
-                (status, error, now, now, capture_id),
-            )
-            await conn.commit()
-            updated = cursor.rowcount > 0
-            if updated:
-                logger.debug(f"Updated capture {capture_id} status to {status}")
-            return updated
+        return await self.captures.update_status(capture_id, status, error)
 
     async def get_pending_captures(self) -> list[CaptureRow]:
         """Get all captures with pending status.
@@ -291,16 +177,7 @@ class Database:
         Returns:
             List of CaptureRow objects with status='pending'
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT * FROM captures
-                WHERE status = 'pending'
-                ORDER BY created_at ASC
-                """
-            )
-            rows = await cursor.fetchall()
-            return [CaptureRow.from_row(dict(row)) for row in rows]
+        return await self.captures.get_pending()
 
     async def get_capture_by_id(self, capture_id: int) -> Optional[CaptureRow]:
         """Get a capture by ID.
@@ -311,15 +188,7 @@ class Database:
         Returns:
             CaptureRow if found, None otherwise
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                "SELECT * FROM captures WHERE id = ?",
-                (capture_id,),
-            )
-            row = await cursor.fetchone()
-            if row:
-                return CaptureRow.from_row(dict(row))
-            return None
+        return await self.captures.get_by_id(capture_id)
 
     async def get_capture_by_filename(self, filename: str) -> Optional[CaptureRow]:
         """Get a capture by filename.
@@ -330,15 +199,7 @@ class Database:
         Returns:
             CaptureRow if found, None otherwise
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                "SELECT * FROM captures WHERE filename = ?",
-                (filename,),
-            )
-            row = await cursor.fetchone()
-            if row:
-                return CaptureRow.from_row(dict(row))
-            return None
+        return await self.captures.get_by_filename(filename)
 
     async def increment_retry(self, capture_id: int) -> int:
         """Increment retry count for a capture.
@@ -352,31 +213,7 @@ class Database:
         Raises:
             ValueError: If capture not found
         """
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET retry_count = retry_count + 1, last_attempt_at = ?, updated_at = ?
-                WHERE id = ?
-                """,
-                (now, now, capture_id),
-            )
-            await conn.commit()
-
-            if cursor.rowcount == 0:
-                raise ValueError(f"Capture not found: {capture_id}")
-
-            # Get the new retry count
-            cursor = await conn.execute(
-                "SELECT retry_count FROM captures WHERE id = ?",
-                (capture_id,),
-            )
-            row = await cursor.fetchone()
-            new_count = row["retry_count"]
-            logger.debug(f"Incremented retry count for capture {capture_id} to {new_count}")
-            return new_count
+        return await self.captures.increment_retry(capture_id)
 
     async def update_transcription(
         self,
@@ -396,23 +233,9 @@ class Database:
         Returns:
             True if update succeeded, False if capture not found
         """
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET transcript = ?, transcript_duration_seconds = ?, transcript_language = ?,
-                    updated_at = ?
-                WHERE id = ?
-                """,
-                (transcript, duration, language, now, capture_id),
-            )
-            await conn.commit()
-            updated = cursor.rowcount > 0
-            if updated:
-                logger.debug(f"Updated transcription for capture {capture_id}")
-            return updated
+        return await self.captures.update_transcription(
+            capture_id, transcript, duration, language
+        )
 
     async def update_classification(
         self,
@@ -436,32 +259,9 @@ class Database:
         Returns:
             True if update succeeded, False if capture not found
         """
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET template_name = ?, classification_confidence = ?,
-                    extracted_fields = ?, suggested_title = ?, tags = ?,
-                    updated_at = ?
-                WHERE id = ?
-                """,
-                (
-                    template,
-                    confidence,
-                    json.dumps(fields),
-                    title,
-                    json.dumps(tags),
-                    now,
-                    capture_id,
-                ),
-            )
-            await conn.commit()
-            updated = cursor.rowcount > 0
-            if updated:
-                logger.debug(f"Updated classification for capture {capture_id}: {template}")
-            return updated
+        return await self.captures.update_classification(
+            capture_id, template, confidence, fields, title, tags
+        )
 
     async def update_notion_result(
         self,
@@ -479,22 +279,7 @@ class Database:
         Returns:
             True if update succeeded, False if capture not found
         """
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET notion_page_id = ?, notion_page_url = ?, updated_at = ?
-                WHERE id = ?
-                """,
-                (page_id, page_url, now, capture_id),
-            )
-            await conn.commit()
-            updated = cursor.rowcount > 0
-            if updated:
-                logger.debug(f"Updated Notion result for capture {capture_id}: {page_id}")
-            return updated
+        return await self.captures.update_notion_result(capture_id, page_id, page_url)
 
     async def mark_complete(self, capture_id: int) -> bool:
         """Mark a capture as complete.
@@ -507,22 +292,7 @@ class Database:
         Returns:
             True if update succeeded, False if capture not found
         """
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET status = 'complete', completed_at = ?, updated_at = ?
-                WHERE id = ?
-                """,
-                (now, now, capture_id),
-            )
-            await conn.commit()
-            updated = cursor.rowcount > 0
-            if updated:
-                logger.info(f"Capture {capture_id} marked complete")
-            return updated
+        return await self.captures.mark_complete(capture_id)
 
     async def update_current_path(self, capture_id: int, current_path: str) -> bool:
         """Update the current path of a capture file.
@@ -534,19 +304,7 @@ class Database:
         Returns:
             True if update succeeded, False if capture not found
         """
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET current_path = ?, updated_at = ?
-                WHERE id = ?
-                """,
-                (current_path, now, capture_id),
-            )
-            await conn.commit()
-            return cursor.rowcount > 0
+        return await self.captures.update_current_path(capture_id, current_path)
 
     async def get_captures_by_status(self, status: str) -> list[CaptureRow]:
         """Get all captures with a specific status.
@@ -557,20 +315,7 @@ class Database:
         Returns:
             List of CaptureRow objects
         """
-        if status not in VALID_STATUSES:
-            raise ValueError(f"Invalid status: {status}. Must be one of {VALID_STATUSES}")
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT * FROM captures
-                WHERE status = ?
-                ORDER BY created_at ASC
-                """,
-                (status,),
-            )
-            rows = await cursor.fetchall()
-            return [CaptureRow.from_row(dict(row)) for row in rows]
+        return await self.captures.get_by_status(status)
 
     async def get_captures_by_date_range(
         self,
@@ -586,17 +331,7 @@ class Database:
         Returns:
             List of CaptureRow objects
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT * FROM captures
-                WHERE captured_at >= ? AND captured_at <= ?
-                ORDER BY captured_at ASC
-                """,
-                (start_date.isoformat(), end_date.isoformat()),
-            )
-            rows = await cursor.fetchall()
-            return [CaptureRow.from_row(dict(row)) for row in rows]
+        return await self.captures.get_by_date_range(start_date, end_date)
 
     async def get_captures_by_source(
         self,
@@ -612,27 +347,7 @@ class Database:
         Returns:
             List of CaptureRow objects
         """
-        async with self._get_connection() as conn:
-            if status:
-                cursor = await conn.execute(
-                    """
-                    SELECT * FROM captures
-                    WHERE source = ? AND status = ?
-                    ORDER BY created_at DESC
-                    """,
-                    (source, status),
-                )
-            else:
-                cursor = await conn.execute(
-                    """
-                    SELECT * FROM captures
-                    WHERE source = ?
-                    ORDER BY created_at DESC
-                    """,
-                    (source,),
-                )
-            rows = await cursor.fetchall()
-            return [CaptureRow.from_row(dict(row)) for row in rows]
+        return await self.captures.get_by_source(source, status)
 
     async def get_source_stats(
         self,
@@ -644,40 +359,9 @@ class Database:
             hours: Number of hours to look back (default 24)
 
         Returns:
-            Dict mapping source to status counts, e.g.:
-            {
-                'watcher': {'pending': 0, 'complete': 5, 'failed': 1},
-                'http': {'pending': 1, 'complete': 10, 'failed': 0}
-            }
+            Dict mapping source to status counts
         """
-        async with self._get_connection() as conn:
-            # Get counts grouped by source and status for recent captures
-            cursor = await conn.execute(
-                """
-                SELECT
-                    COALESCE(source, 'watcher') as source,
-                    status,
-                    COUNT(*) as count
-                FROM captures
-                WHERE created_at >= datetime('now', ?)
-                GROUP BY source, status
-                """,
-                (f"-{hours} hours",),
-            )
-            rows = await cursor.fetchall()
-
-            # Build result dict
-            result: dict[str, dict[str, int]] = {
-                "watcher": {},
-                "http": {},
-            }
-            for row in rows:
-                source = row["source"] or "watcher"
-                if source not in result:
-                    result[source] = {}
-                result[source][row["status"]] = row["count"]
-
-            return result
+        return await self.captures.get_source_stats(hours)
 
     async def get_recent_http_uploads(
         self,
@@ -691,21 +375,42 @@ class Database:
         Returns:
             List of CaptureRow objects, most recent first
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT * FROM captures
-                WHERE source = 'http'
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (limit,),
-            )
-            rows = await cursor.fetchall()
-            return [CaptureRow.from_row(dict(row)) for row in rows]
+        return await self.captures.get_recent_http_uploads(limit)
+
+    async def reset_capture(self, capture_id: int) -> bool:
+        """Reset a capture to pending status for reprocessing.
+
+        Clears error state and resets retry count.
+
+        Args:
+            capture_id: ID of the capture to reset
+
+        Returns:
+            True if reset succeeded, False if capture not found
+        """
+        return await self.captures.reset(capture_id)
+
+    async def get_queue_depth(self) -> dict[str, int]:
+        """Get count of captures by status.
+
+        Returns:
+            Dictionary mapping status to count
+        """
+        return await self.captures.get_queue_depth()
+
+    async def delete_capture(self, capture_id: int) -> bool:
+        """Delete a capture and its failure logs.
+
+        Args:
+            capture_id: ID of the capture to delete
+
+        Returns:
+            True if deletion succeeded, False if capture not found
+        """
+        return await self.captures.delete(capture_id)
 
     # =========================================================================
-    # Failure Log Operations
+    # Failure Log Operations (delegating to FailureLogRepository)
     # =========================================================================
 
     async def log_failure(
@@ -728,26 +433,9 @@ class Database:
         Returns:
             ID of the failure log entry
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                INSERT INTO failure_log (capture_id, stage, error_type, error_message, error_details)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    capture_id,
-                    stage,
-                    error_type,
-                    error_message,
-                    json.dumps(error_details) if error_details else None,
-                ),
-            )
-            await conn.commit()
-            log_id = cursor.lastrowid
-            logger.warning(
-                f"Logged failure for capture {capture_id}: stage={stage}, error={error_message}"
-            )
-            return log_id
+        return await self.failures.log(
+            capture_id, stage, error_type, error_message, error_details
+        )
 
     async def get_failures_for_capture(self, capture_id: int) -> list[FailureLogRow]:
         """Get all failure log entries for a capture.
@@ -758,20 +446,10 @@ class Database:
         Returns:
             List of FailureLogRow objects, ordered by occurrence time
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT * FROM failure_log
-                WHERE capture_id = ?
-                ORDER BY occurred_at ASC
-                """,
-                (capture_id,),
-            )
-            rows = await cursor.fetchall()
-            return [FailureLogRow.from_row(dict(row)) for row in rows]
+        return await self.failures.get_for_capture(capture_id)
 
     # =========================================================================
-    # Daily Stats Operations
+    # Daily Stats Operations (delegating to StatisticsRepository)
     # =========================================================================
 
     async def get_daily_stats(self, date: str) -> Optional[DailyStatsRow]:
@@ -783,15 +461,7 @@ class Database:
         Returns:
             DailyStatsRow if found, None otherwise
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                "SELECT * FROM daily_stats WHERE date = ?",
-                (date,),
-            )
-            row = await cursor.fetchone()
-            if row:
-                return DailyStatsRow.from_row(dict(row))
-            return None
+        return await self.statistics.get(date)
 
     async def update_daily_stats(
         self,
@@ -819,52 +489,15 @@ class Database:
         Returns:
             True if operation succeeded
         """
-        # Get existing stats to merge with updates
-        existing = await self.get_daily_stats(date)
-
-        values = {
-            "date": date,
-            "captures_received": captures_received
-            if captures_received is not None
-            else (existing.captures_received if existing else 0),
-            "captures_completed": captures_completed
-            if captures_completed is not None
-            else (existing.captures_completed if existing else 0),
-            "captures_failed": captures_failed
-            if captures_failed is not None
-            else (existing.captures_failed if existing else 0),
-            "total_audio_seconds": total_audio_seconds
-            if total_audio_seconds is not None
-            else (existing.total_audio_seconds if existing else 0.0),
-            "avg_processing_time_seconds": avg_processing_time_seconds
-            if avg_processing_time_seconds is not None
-            else (existing.avg_processing_time_seconds if existing else None),
-            "template_breakdown": json.dumps(template_breakdown)
-            if template_breakdown is not None
-            else (json.dumps(existing.template_breakdown) if existing and existing.template_breakdown else None),
-        }
-
-        async with self._get_connection() as conn:
-            await conn.execute(
-                """
-                INSERT OR REPLACE INTO daily_stats
-                (date, captures_received, captures_completed, captures_failed,
-                 total_audio_seconds, avg_processing_time_seconds, template_breakdown)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    values["date"],
-                    values["captures_received"],
-                    values["captures_completed"],
-                    values["captures_failed"],
-                    values["total_audio_seconds"],
-                    values["avg_processing_time_seconds"],
-                    values["template_breakdown"],
-                ),
-            )
-            await conn.commit()
-            logger.debug(f"Updated daily stats for {date}")
-            return True
+        return await self.statistics.update(
+            date,
+            captures_received,
+            captures_completed,
+            captures_failed,
+            total_audio_seconds,
+            avg_processing_time_seconds,
+            template_breakdown,
+        )
 
     async def increment_daily_stat(
         self,
@@ -882,38 +515,7 @@ class Database:
         Returns:
             New value of the field
         """
-        valid_fields = {"captures_received", "captures_completed", "captures_failed"}
-        if field not in valid_fields:
-            raise ValueError(f"Invalid field: {field}. Must be one of {valid_fields}")
-
-        async with self._get_connection() as conn:
-            # Ensure row exists
-            await conn.execute(
-                """
-                INSERT OR IGNORE INTO daily_stats (date)
-                VALUES (?)
-                """,
-                (date,),
-            )
-
-            # Increment atomically
-            await conn.execute(
-                f"""
-                UPDATE daily_stats
-                SET {field} = {field} + ?
-                WHERE date = ?
-                """,
-                (amount, date),
-            )
-            await conn.commit()
-
-            # Get new value
-            cursor = await conn.execute(
-                f"SELECT {field} FROM daily_stats WHERE date = ?",
-                (date,),
-            )
-            row = await cursor.fetchone()
-            return row[field]
+        return await self.statistics.increment(date, field, amount)
 
     async def get_stats_for_date_range(
         self,
@@ -929,91 +531,4 @@ class Database:
         Returns:
             List of DailyStatsRow objects
         """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT * FROM daily_stats
-                WHERE date >= ? AND date <= ?
-                ORDER BY date ASC
-                """,
-                (start_date, end_date),
-            )
-            rows = await cursor.fetchall()
-            return [DailyStatsRow.from_row(dict(row)) for row in rows]
-
-    # =========================================================================
-    # Utility Operations
-    # =========================================================================
-
-    async def reset_capture(self, capture_id: int) -> bool:
-        """Reset a capture to pending status for reprocessing.
-
-        Clears error state and resets retry count.
-
-        Args:
-            capture_id: ID of the capture to reset
-
-        Returns:
-            True if reset succeeded, False if capture not found
-        """
-        now = datetime.utcnow().isoformat()
-
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                UPDATE captures
-                SET status = 'pending', retry_count = 0, last_error = NULL,
-                    updated_at = ?
-                WHERE id = ?
-                """,
-                (now, capture_id),
-            )
-            await conn.commit()
-            reset = cursor.rowcount > 0
-            if reset:
-                logger.info(f"Reset capture {capture_id} to pending")
-            return reset
-
-    async def get_queue_depth(self) -> dict[str, int]:
-        """Get count of captures by status.
-
-        Returns:
-            Dictionary mapping status to count
-        """
-        async with self._get_connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT status, COUNT(*) as count
-                FROM captures
-                GROUP BY status
-                """
-            )
-            rows = await cursor.fetchall()
-            return {row["status"]: row["count"] for row in rows}
-
-    async def delete_capture(self, capture_id: int) -> bool:
-        """Delete a capture and its failure logs.
-
-        Args:
-            capture_id: ID of the capture to delete
-
-        Returns:
-            True if deletion succeeded, False if capture not found
-        """
-        async with self._get_connection() as conn:
-            # Delete failure logs first (foreign key constraint)
-            await conn.execute(
-                "DELETE FROM failure_log WHERE capture_id = ?",
-                (capture_id,),
-            )
-
-            # Delete capture
-            cursor = await conn.execute(
-                "DELETE FROM captures WHERE id = ?",
-                (capture_id,),
-            )
-            await conn.commit()
-            deleted = cursor.rowcount > 0
-            if deleted:
-                logger.info(f"Deleted capture {capture_id}")
-            return deleted
+        return await self.statistics.get_for_date_range(start_date, end_date)

@@ -26,6 +26,10 @@ classifiers = [
 ]
 keywords = ["voice", "transcription", "notion", "whisper", "productivity"]
 
+# Dependencies are defined here and mirrored in requirements.txt for pip-compile.
+# To generate the lock file for reproducible builds:
+#   pip-compile requirements.txt -o requirements.lock
+# The Docker build uses requirements.lock for production deployments.
 dependencies = [
     # Core
     "python-dotenv>=1.0.0",

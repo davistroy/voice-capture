@@ -78,8 +78,7 @@ async def retry_capture(
     classification_service = None
     template_loader = None
     try:
-        template_loader = TemplateLoader(settings.paths.templates)
-        template_loader.load_all()
+        template_loader = TemplateLoader.from_directory(settings.paths.templates)
 
         classification_service = ClassificationService(
             api_key=settings.anthropic_api_key,

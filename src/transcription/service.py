@@ -3,15 +3,27 @@ Transcription service facade with retry logic.
 
 Provides a high-level interface for transcription with automatic
 retry handling, exponential backoff, and error classification.
+
+Preferred instantiation pattern:
+    # Using factory method (recommended)
+    from src.config.settings import get_settings
+    settings = get_settings()
+    service = TranscriptionService.from_settings(settings)
+
+    # Direct instantiation (for testing or custom configuration)
+    backend = WhisperAPIBackend(api_key="...", model="whisper-1")
+    service = TranscriptionService(backend=backend, retry_config=RetryConfig())
 """
+
+from __future__ import annotations
 
 import asyncio
 import logging
-import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
+from src.common.backoff import calculate_backoff
 from src.models.transcription import TranscriptionResult
 from src.transcription.base import (
     TranscriptionBackend,
@@ -22,6 +34,9 @@ from src.transcription.base import (
     APIError,
     NetworkError,
 )
+
+if TYPE_CHECKING:
+    from src.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,22 +55,21 @@ class RetryConfig:
         """
         Calculate exponential backoff with jitter.
 
+        Delegates to src.common.backoff.calculate_backoff.
+
         Args:
             retry_count: Current retry attempt (0-based).
 
         Returns:
             Seconds to wait before retrying.
         """
-        # Calculate base exponential backoff
-        backoff = min(
-            self.base_backoff_seconds * (self.backoff_multiplier ** retry_count),
-            self.max_backoff_seconds,
+        return calculate_backoff(
+            attempt=retry_count,
+            base_seconds=self.base_backoff_seconds,
+            max_seconds=self.max_backoff_seconds,
+            multiplier=self.backoff_multiplier,
+            jitter_factor=self.jitter_factor,
         )
-
-        # Add jitter (random value between 0 and jitter_factor * backoff)
-        jitter = backoff * self.jitter_factor * random.random()
-
-        return backoff + jitter
 
 
 class TranscriptionService:
@@ -80,6 +94,43 @@ class TranscriptionService:
         """
         self._backend = backend
         self._retry_config = retry_config or RetryConfig()
+
+    @classmethod
+    def from_settings(cls, settings: Settings) -> TranscriptionService:
+        """
+        Create a TranscriptionService from application settings.
+
+        This is the preferred way to instantiate the service in production code.
+        It extracts all necessary configuration from the Settings object and
+        creates the appropriate backend.
+
+        Args:
+            settings: Application settings containing transcription and pipeline
+                configuration.
+
+        Returns:
+            Configured TranscriptionService instance.
+
+        Example:
+            from src.config.settings import get_settings
+            settings = get_settings()
+            service = TranscriptionService.from_settings(settings)
+        """
+        from src.transcription.whisper_api import WhisperAPIBackend
+
+        backend = WhisperAPIBackend(
+            api_key=settings.openai_api_key,
+            model=settings.transcription.model,
+            timeout=settings.transcription.timeout_seconds,
+        )
+
+        retry_config = RetryConfig(
+            max_retries=settings.pipeline.max_retries,
+            base_backoff_seconds=settings.pipeline.base_backoff_seconds,
+            max_backoff_seconds=settings.pipeline.max_backoff_seconds,
+        )
+
+        return cls(backend=backend, retry_config=retry_config)
 
     @property
     def backend_name(self) -> str:

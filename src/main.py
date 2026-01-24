@@ -24,7 +24,7 @@ from src.http.server import HttpUploadServer
 from src.notion.client import NotionService
 from src.pipeline.orchestrator import PipelineOrchestrator
 from src.pipeline.retry import RetryConfig
-from src.transcription.service import create_whisper_service, TranscriptionService
+from src.transcription.service import TranscriptionService
 from src.watcher.watcher import FolderWatcher, NewCaptureEvent
 
 
@@ -146,26 +146,14 @@ class VoiceCaptureApp:
         await self._db.initialize()
         logger.info("Database initialized: %s", self.settings.paths.database)
 
-        # Initialize transcription service
-        self._transcription = create_whisper_service(
-            api_key=self.settings.openai_api_key,
-            model=self.settings.transcription.model,
-            timeout=self.settings.transcription.timeout_seconds,
-            max_retries=self.settings.pipeline.max_retries,
-            base_backoff=self.settings.pipeline.base_backoff_seconds,
-        )
+        # Initialize transcription service using factory method
+        self._transcription = TranscriptionService.from_settings(self.settings)
         logger.info("Transcription service initialized: backend=%s, model=%s",
                     self._transcription.backend_name,
                     self.settings.transcription.model)
 
-        # Initialize Notion service
-        self._notion = NotionService(
-            api_key=self.settings.notion_api_key,
-            database_id=self.settings.notion_voice_captures_db_id,
-            max_retries=self.settings.pipeline.max_retries,
-            base_backoff=self.settings.pipeline.base_backoff_seconds,
-            max_backoff=self.settings.pipeline.max_backoff_seconds,
-        )
+        # Initialize Notion service using factory method
+        self._notion = NotionService.from_settings(self.settings)
         logger.info("Notion service initialized: database=%s",
                     self.settings.notion_voice_captures_db_id[:8] + "...")
 
@@ -207,7 +195,7 @@ class VoiceCaptureApp:
                 settings=self.settings.http,
                 paths=self.settings.paths,
                 db=self._db,
-                file_validator=self._watcher._validator,
+                file_validator=self._watcher.file_validator,
                 orchestrator=self._orchestrator,
             )
             logger.info("HTTP upload server initialized: host=%s, port=%d, auth=%s",

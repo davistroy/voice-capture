@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any, Dict, Optional
 import json
 
+from src.common.datetime_utils import parse_datetime as _parse_datetime
 from src.models.transcription import TranscriptionResult
 from src.models.classification import ClassificationResult
 
@@ -238,14 +239,6 @@ class CaptureRecord:
         Returns:
             New CaptureRecord instance.
         """
-        # Parse datetime fields
-        def parse_datetime(value: Any) -> Optional[datetime]:
-            if value is None:
-                return None
-            if isinstance(value, datetime):
-                return value
-            return datetime.fromisoformat(value)
-
         # Parse nested models
         transcription = None
         if data.get("transcription"):
@@ -261,18 +254,18 @@ class CaptureRecord:
             original_path=data.get("original_path", ""),
             current_path=data.get("current_path"),
             device=Device.from_string(data.get("device", "unknown")),
-            captured_at=parse_datetime(data.get("captured_at")),
+            captured_at=_parse_datetime(data.get("captured_at")),
             status=ProcessingStatus.from_string(data.get("status", "pending")),
             retry_count=data.get("retry_count", 0),
             last_error=data.get("last_error"),
-            last_attempt_at=parse_datetime(data.get("last_attempt_at")),
+            last_attempt_at=_parse_datetime(data.get("last_attempt_at")),
             transcription=transcription,
             classification=classification,
             notion_page_id=data.get("notion_page_id"),
             notion_page_url=data.get("notion_page_url"),
-            created_at=parse_datetime(data.get("created_at")),
-            updated_at=parse_datetime(data.get("updated_at")),
-            completed_at=parse_datetime(data.get("completed_at")),
+            created_at=_parse_datetime(data.get("created_at")),
+            updated_at=_parse_datetime(data.get("updated_at")),
+            completed_at=_parse_datetime(data.get("completed_at")),
         )
 
     @classmethod
@@ -337,34 +330,24 @@ class CaptureRecord:
                 reasoning=None,  # Reasoning not stored in DB
             )
 
-        # Parse datetime fields
-        def parse_datetime(value: Any) -> Optional[datetime]:
-            if value is None:
-                return None
-            if isinstance(value, datetime):
-                return value
-            if isinstance(value, str):
-                return datetime.fromisoformat(value)
-            return None
-
         return cls(
             id=row.get("id"),
             filename=row.get("filename", ""),
             original_path=row.get("original_path", ""),
             current_path=row.get("current_path"),
             device=Device.from_string(row.get("device", "unknown")),
-            captured_at=parse_datetime(row.get("captured_at")),
+            captured_at=_parse_datetime(row.get("captured_at")),
             status=ProcessingStatus.from_string(row.get("status", "pending")),
             retry_count=row.get("retry_count", 0),
             last_error=row.get("last_error"),
-            last_attempt_at=parse_datetime(row.get("last_attempt_at")),
+            last_attempt_at=_parse_datetime(row.get("last_attempt_at")),
             transcription=transcription,
             classification=classification,
             notion_page_id=row.get("notion_page_id"),
             notion_page_url=row.get("notion_page_url"),
-            created_at=parse_datetime(row.get("created_at")),
-            updated_at=parse_datetime(row.get("updated_at")),
-            completed_at=parse_datetime(row.get("completed_at")),
+            created_at=_parse_datetime(row.get("created_at")),
+            updated_at=_parse_datetime(row.get("updated_at")),
+            completed_at=_parse_datetime(row.get("completed_at")),
         )
 
     def to_db_dict(self) -> Dict[str, Any]:

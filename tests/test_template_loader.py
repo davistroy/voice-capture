@@ -636,6 +636,87 @@ class TestTemplateLoader:
         """Get template count."""
         assert len(loader_with_templates) == 2
 
+    def test_from_directory_factory_method(self, temp_templates_dir: Path, sample_template_data: Dict[str, Any]):
+        """Factory method creates loader with templates loaded."""
+        # Write a template file
+        with open(temp_templates_dir / "task.yaml", "w") as f:
+            yaml.dump(sample_template_data, f)
+
+        # Use factory method
+        loader = TemplateLoader.from_directory(temp_templates_dir)
+
+        # Templates should be loaded
+        assert len(loader) == 1
+        assert "task" in loader
+        # No deprecation warning when using factory method
+        task = loader.get_template("task")
+        assert task is not None
+        assert task.name == "task"
+
+    def test_from_directory_raises_on_missing_dir(self, tmp_path: Path):
+        """Factory method raises FileNotFoundError for missing directory."""
+        with pytest.raises(FileNotFoundError):
+            TemplateLoader.from_directory(tmp_path / "nonexistent")
+
+    def test_deprecation_warning_without_load_all(self, temp_templates_dir: Path):
+        """Deprecation warning when get_template() called before load_all()."""
+        import warnings
+
+        loader = TemplateLoader(temp_templates_dir)
+
+        # Capture deprecation warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = loader.get_template("task")
+
+            # Should get a deprecation warning
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "get_template() called before load_all()" in str(w[0].message)
+            assert "from_directory()" in str(w[0].message)
+
+        # Result should still be None (no templates loaded)
+        assert result is None
+
+    def test_no_deprecation_warning_after_load_all(self, temp_templates_dir: Path, sample_template_data: Dict[str, Any]):
+        """No deprecation warning after load_all() has been called."""
+        import warnings
+
+        # Write a template file
+        with open(temp_templates_dir / "task.yaml", "w") as f:
+            yaml.dump(sample_template_data, f)
+
+        loader = TemplateLoader(temp_templates_dir)
+        loader.load_all()
+
+        # Capture deprecation warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = loader.get_template("task")
+
+            # Should NOT get a deprecation warning
+            assert len(w) == 0
+
+        # Result should be the template
+        assert result is not None
+        assert result.name == "task"
+
+    def test_loaded_flag_tracking(self, temp_templates_dir: Path, sample_template_data: Dict[str, Any]):
+        """_loaded flag is correctly set after load_all()."""
+        # Write a template file
+        with open(temp_templates_dir / "task.yaml", "w") as f:
+            yaml.dump(sample_template_data, f)
+
+        loader = TemplateLoader(temp_templates_dir)
+
+        # Initially not loaded
+        assert loader._loaded is False
+
+        loader.load_all()
+
+        # Now loaded
+        assert loader._loaded is True
+
 
 class TestTemplateLoaderErrorHandling:
     """Tests for error handling in TemplateLoader."""
