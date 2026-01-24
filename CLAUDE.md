@@ -97,6 +97,8 @@ voice-capture/
 │   ├── db/                 # SQLite database layer
 │   ├── models/             # Domain models
 │   ├── config/             # Pydantic settings
+│   ├── common/             # Shared utilities (backoff, datetime, secrets)
+│   ├── interfaces/         # Abstract interfaces for services
 │   └── main.py             # Application entry point
 ├── config/
 │   ├── templates/          # Template definitions (6 YAML files)
