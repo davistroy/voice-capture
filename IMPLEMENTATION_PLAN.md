@@ -1229,7 +1229,7 @@ Add configuration settings for the HTTP upload server following existing Pydanti
 
 ---
 
-#### 5.2 HTTP Server Core Module
+#### 5.2 HTTP Server Core Module ✅ Completed 2026-01-24
 
 **Requirement Refs:** TDD §4.1 (watcher patterns), TDD §5.1 (pipeline integration)
 **Files Affected:**
@@ -1243,8 +1243,8 @@ Add configuration settings for the HTTP upload server following existing Pydanti
 Create the HTTP server module using aiohttp (already a dependency). The server manages lifecycle, routing, and graceful shutdown. Uses dependency injection for testability.
 
 **Tasks:**
-1. [ ] Create `src/http/__init__.py` with module exports
-2. [ ] Implement `HttpUploadServer` class in `server.py`:
+1. [x] Create `src/http/__init__.py` with module exports
+2. [x] Implement `HttpUploadServer` class in `server.py`:
    ```python
    class HttpUploadServer:
        def __init__(
@@ -1259,39 +1259,40 @@ Create the HTTP server module using aiohttp (already a dependency). The server m
        async def start(self) -> None: ...
        async def stop(self) -> None: ...
    ```
-3. [ ] Create aiohttp Application with routes:
+3. [x] Create aiohttp Application with routes:
    - `POST /api/v1/capture` - Upload audio file
    - `GET /api/v1/capture/{id}` - Check capture status
    - `GET /health` - Health check endpoint
-4. [ ] Implement graceful shutdown (drain connections)
-5. [ ] Create `responses.py` with standardized JSON response helpers:
+4. [x] Implement graceful shutdown (drain connections)
+5. [x] Create `responses.py` with standardized JSON response helpers:
    ```python
    def success_response(capture_id, status, notion_url=None, processing_time_ms=None)
    def error_response(error_code, message, capture_id=None)
    ```
-6. [ ] Write unit tests for server lifecycle
+6. [x] Write unit tests for server lifecycle
 
 **Acceptance Criteria:**
-- [ ] Server starts and stops cleanly
-- [ ] Routes respond correctly
-- [ ] Health endpoint returns server status
-- [ ] Graceful shutdown waits for in-flight requests
+- [x] Server starts and stops cleanly
+- [x] Routes respond correctly
+- [x] Health endpoint returns server status
+- [x] Graceful shutdown waits for in-flight requests
 
 ---
 
-#### 5.3 Upload Handler Implementation
+#### 5.3 Upload Handler Implementation ✅ Completed 2026-01-24
 
 **Requirement Refs:** TDD §4.1 (file validation), TDD §5.1 (pipeline)
 **Files Affected:**
-- `src/http/handlers.py` (create)
-- `tests/http/test_handlers.py` (create)
-- `tests/fixtures/http/` (create directory)
+- `src/http/server.py` (handlers implemented inline in server module)
+- `tests/http/test_server.py` (handler tests included)
 
 **Description:**
 Implement the upload handler that receives audio files, validates them, and triggers the processing pipeline. Supports both synchronous (wait for result) and asynchronous (immediate return) modes.
 
+**Note:** Handlers were implemented directly in `server.py` rather than a separate `handlers.py` for simplicity, since the server class manages all the dependencies needed for the handlers.
+
 **Tasks:**
-1. [ ] Implement `handle_upload()` function:
+1. [x] Implement `handle_upload()` function:
    ```python
    async def handle_upload(request: web.Request) -> web.Response:
        # 1. Parse multipart form data
@@ -1303,25 +1304,25 @@ Implement the upload handler that receives audio files, validates them, and trig
        # 7. If sync mode: await orchestrator.process_capture()
        # 8. Return JSON response
    ```
-2. [ ] Support `?wait=true` query param for sync processing (default: true)
-3. [ ] Support `device` form field (watch/phone/http, default: http)
-4. [ ] Implement `handle_status()` for checking capture status:
+2. [x] Support `?wait=true` query param for sync processing (default: true)
+3. [x] Support `device` form field (watch/phone/http, default: http)
+4. [x] Implement `handle_status()` for checking capture status:
    ```python
    async def handle_status(request: web.Request) -> web.Response:
        # Return capture status, template, notion_url if complete
    ```
-5. [ ] Implement atomic file write (write to temp, then rename)
-6. [ ] Handle cleanup on failure (remove file, remove DB entry)
-7. [ ] Create test fixtures for multipart upload simulation
-8. [ ] Write comprehensive handler tests
+5. [x] Implement atomic file write (write to temp, then rename)
+6. [x] Handle cleanup on failure (remove file, remove DB entry)
+7. [x] Create test fixtures for multipart upload simulation
+8. [x] Write comprehensive handler tests
 
 **Acceptance Criteria:**
-- [ ] Valid audio files accepted and processed
-- [ ] Invalid files rejected with clear error message
-- [ ] Sync mode returns Notion URL on success
-- [ ] Async mode returns capture_id immediately
-- [ ] Failed uploads cleaned up (no orphaned files/records)
-- [ ] Large files (up to max_upload_mb) handled correctly
+- [x] Valid audio files accepted and processed
+- [x] Invalid files rejected with clear error message
+- [x] Sync mode returns Notion URL on success
+- [x] Async mode returns capture_id immediately
+- [x] Failed uploads cleaned up (no orphaned files/records)
+- [x] Large files (up to max_upload_mb) handled correctly
 
 **API Request/Response Examples:**
 
@@ -1635,7 +1636,7 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 | Phase 2: Classification & Templates | 5 items (2.1-2.5) | ✅ Complete 2026-01-20 |
 | Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | ✅ Complete 2026-01-21 |
 | Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | ✅ Complete 2026-01-20 |
-| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1 complete) |
+| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1-5.3 complete) |
 
 ---
 
