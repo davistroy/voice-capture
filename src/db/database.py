@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS captures (
     current_path TEXT,
     device TEXT,
     captured_at TIMESTAMP,
+    source TEXT DEFAULT 'watcher',  -- Upload source: 'watcher' or 'http'
 
     -- Processing state
     status TEXT NOT NULL DEFAULT 'pending',
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS captures (
 
 CREATE INDEX IF NOT EXISTS idx_captures_status ON captures(status);
 CREATE INDEX IF NOT EXISTS idx_captures_captured_at ON captures(captured_at);
+CREATE INDEX IF NOT EXISTS idx_captures_source ON captures(source);
 
 -- Failure history for debugging
 CREATE TABLE IF NOT EXISTS failure_log (
@@ -206,6 +208,7 @@ class Database:
         device: Optional[str] = None,
         captured_at: Optional[datetime] = None,
         current_path: Optional[str] = None,
+        source: str = "watcher",
     ) -> int:
         """Insert a new capture record.
 
@@ -215,6 +218,7 @@ class Database:
             device: Device type ('watch', 'phone', or 'unknown')
             captured_at: Timestamp when audio was captured
             current_path: Current path of the file (if moved)
+            source: Upload source ('watcher' for folder watcher, 'http' for HTTP upload)
 
         Returns:
             ID of the inserted capture record
@@ -225,8 +229,8 @@ class Database:
         async with self._get_connection() as conn:
             cursor = await conn.execute(
                 """
-                INSERT INTO captures (filename, original_path, device, captured_at, current_path)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO captures (filename, original_path, device, captured_at, current_path, source)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     filename,
@@ -234,11 +238,12 @@ class Database:
                     device,
                     captured_at.isoformat() if captured_at else None,
                     current_path,
+                    source,
                 ),
             )
             await conn.commit()
             capture_id = cursor.lastrowid
-            logger.debug(f"Inserted capture: id={capture_id}, filename={filename}")
+            logger.debug(f"Inserted capture: id={capture_id}, filename={filename}, source={source}")
             return capture_id
 
     async def update_status(
@@ -589,6 +594,112 @@ class Database:
                 ORDER BY captured_at ASC
                 """,
                 (start_date.isoformat(), end_date.isoformat()),
+            )
+            rows = await cursor.fetchall()
+            return [CaptureRow.from_row(dict(row)) for row in rows]
+
+    async def get_captures_by_source(
+        self,
+        source: str,
+        status: Optional[str] = None,
+    ) -> list[CaptureRow]:
+        """Get captures by upload source.
+
+        Args:
+            source: Upload source ('watcher' or 'http')
+            status: Optional status filter
+
+        Returns:
+            List of CaptureRow objects
+        """
+        async with self._get_connection() as conn:
+            if status:
+                cursor = await conn.execute(
+                    """
+                    SELECT * FROM captures
+                    WHERE source = ? AND status = ?
+                    ORDER BY created_at DESC
+                    """,
+                    (source, status),
+                )
+            else:
+                cursor = await conn.execute(
+                    """
+                    SELECT * FROM captures
+                    WHERE source = ?
+                    ORDER BY created_at DESC
+                    """,
+                    (source,),
+                )
+            rows = await cursor.fetchall()
+            return [CaptureRow.from_row(dict(row)) for row in rows]
+
+    async def get_source_stats(
+        self,
+        hours: int = 24,
+    ) -> dict[str, dict[str, int]]:
+        """Get capture statistics grouped by source.
+
+        Args:
+            hours: Number of hours to look back (default 24)
+
+        Returns:
+            Dict mapping source to status counts, e.g.:
+            {
+                'watcher': {'pending': 0, 'complete': 5, 'failed': 1},
+                'http': {'pending': 1, 'complete': 10, 'failed': 0}
+            }
+        """
+        async with self._get_connection() as conn:
+            # Get counts grouped by source and status for recent captures
+            cursor = await conn.execute(
+                """
+                SELECT
+                    COALESCE(source, 'watcher') as source,
+                    status,
+                    COUNT(*) as count
+                FROM captures
+                WHERE created_at >= datetime('now', ?)
+                GROUP BY source, status
+                """,
+                (f"-{hours} hours",),
+            )
+            rows = await cursor.fetchall()
+
+            # Build result dict
+            result: dict[str, dict[str, int]] = {
+                "watcher": {},
+                "http": {},
+            }
+            for row in rows:
+                source = row["source"] or "watcher"
+                if source not in result:
+                    result[source] = {}
+                result[source][row["status"]] = row["count"]
+
+            return result
+
+    async def get_recent_http_uploads(
+        self,
+        limit: int = 10,
+    ) -> list[CaptureRow]:
+        """Get recent HTTP uploads.
+
+        Args:
+            limit: Maximum number of records to return
+
+        Returns:
+            List of CaptureRow objects, most recent first
+        """
+        async with self._get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT * FROM captures
+                WHERE source = 'http'
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
             )
             rows = await cursor.fetchall()
             return [CaptureRow.from_row(dict(row)) for row in rows]

@@ -429,6 +429,218 @@ class TestRetry:
 
 
 # ============================================================================
+# HTTP Status Tests
+# ============================================================================
+
+
+class TestHTTPStatus:
+    """Tests for HTTP server status and upload statistics."""
+
+    @pytest.mark.asyncio
+    async def test_get_http_stats_empty(self, temp_dir: Path):
+        """Test getting HTTP stats with no HTTP uploads."""
+        from src.cli.queue_status import get_http_stats
+
+        db_path = temp_dir / "http_test.db"
+        db = Database(db_path)
+        await db.initialize()
+
+        try:
+            stats = await get_http_stats(db)
+
+            assert stats["http_total_24h"] == 0
+            assert stats["watcher_total_24h"] == 0
+            assert len(stats["recent_http"]) == 0
+        finally:
+            await db.close()
+
+    @pytest.mark.asyncio
+    async def test_get_http_stats_with_data(self, temp_dir: Path):
+        """Test getting HTTP stats with mixed source uploads."""
+        from src.cli.queue_status import get_http_stats
+
+        db_path = temp_dir / "http_test2.db"
+        db = Database(db_path)
+        await db.initialize()
+
+        try:
+            # Insert HTTP uploads
+            for i in range(3):
+                await db.insert_capture(
+                    filename=f"http_upload_{i}.m4a",
+                    original_path=f"/path/http_{i}.m4a",
+                    device="phone",
+                    source="http",
+                )
+
+            # Insert watcher uploads
+            for i in range(2):
+                await db.insert_capture(
+                    filename=f"watcher_upload_{i}.m4a",
+                    original_path=f"/path/watcher_{i}.m4a",
+                    device="watch",
+                    source="watcher",
+                )
+
+            # Mark some as complete
+            captures = await db.get_captures_by_source("http")
+            if captures:
+                await db.update_status(captures[0].id, "complete")
+
+            stats = await get_http_stats(db)
+
+            assert stats["http_total_24h"] == 3
+            assert stats["watcher_total_24h"] == 2
+            assert len(stats["recent_http"]) == 3
+        finally:
+            await db.close()
+
+    def test_queue_status_cli_http_flag(
+        self,
+        cli_runner: CliRunner,
+        mock_settings: Settings,
+        temp_dir: Path,
+    ):
+        """Test queue status with --http flag."""
+        from src.cli.queue_status import queue_status_cli
+
+        with patch("src.cli.queue_status.get_settings", return_value=mock_settings):
+            result = cli_runner.invoke(queue_status_cli, ["--http"])
+
+        assert result.exit_code == 0
+        # Should show HTTP server status
+        assert "HTTP Server" in result.output
+        # Should show upload sources table
+        assert "Upload Sources" in result.output or "HTTP Upload" in result.output
+
+    def test_queue_status_cli_shows_http_status_in_default(
+        self,
+        cli_runner: CliRunner,
+        mock_settings: Settings,
+        temp_dir: Path,
+    ):
+        """Test that default queue status shows HTTP server status."""
+        from src.cli.queue_status import queue_status_cli
+
+        with patch("src.cli.queue_status.get_settings", return_value=mock_settings):
+            result = cli_runner.invoke(queue_status_cli)
+
+        assert result.exit_code == 0
+        # Should show HTTP server status line
+        assert "HTTP Server" in result.output
+
+    @pytest.mark.asyncio
+    async def test_source_field_watcher(self, temp_dir: Path):
+        """Test that watcher uploads have source='watcher'."""
+        db_path = temp_dir / "source_test.db"
+        db = Database(db_path)
+        await db.initialize()
+
+        try:
+            # Insert with default source (watcher)
+            capture_id = await db.insert_capture(
+                filename="watcher_test.m4a",
+                original_path="/path/watcher_test.m4a",
+                device="watch",
+                source="watcher",
+            )
+
+            capture = await db.get_capture_by_id(capture_id)
+            assert capture.source == "watcher"
+        finally:
+            await db.close()
+
+    @pytest.mark.asyncio
+    async def test_source_field_http(self, temp_dir: Path):
+        """Test that HTTP uploads have source='http'."""
+        db_path = temp_dir / "source_test2.db"
+        db = Database(db_path)
+        await db.initialize()
+
+        try:
+            # Insert with HTTP source
+            capture_id = await db.insert_capture(
+                filename="http_test.m4a",
+                original_path="/path/http_test.m4a",
+                device="phone",
+                source="http",
+            )
+
+            capture = await db.get_capture_by_id(capture_id)
+            assert capture.source == "http"
+        finally:
+            await db.close()
+
+    @pytest.mark.asyncio
+    async def test_get_captures_by_source(self, temp_dir: Path):
+        """Test filtering captures by source."""
+        db_path = temp_dir / "source_filter.db"
+        db = Database(db_path)
+        await db.initialize()
+
+        try:
+            # Insert mixed sources
+            await db.insert_capture(
+                filename="http1.m4a",
+                original_path="/path/http1.m4a",
+                source="http",
+            )
+            await db.insert_capture(
+                filename="http2.m4a",
+                original_path="/path/http2.m4a",
+                source="http",
+            )
+            await db.insert_capture(
+                filename="watcher1.m4a",
+                original_path="/path/watcher1.m4a",
+                source="watcher",
+            )
+
+            # Filter by HTTP
+            http_captures = await db.get_captures_by_source("http")
+            assert len(http_captures) == 2
+            assert all(c.source == "http" for c in http_captures)
+
+            # Filter by watcher
+            watcher_captures = await db.get_captures_by_source("watcher")
+            assert len(watcher_captures) == 1
+            assert watcher_captures[0].source == "watcher"
+        finally:
+            await db.close()
+
+    @pytest.mark.asyncio
+    async def test_get_recent_http_uploads(self, temp_dir: Path):
+        """Test getting recent HTTP uploads."""
+        db_path = temp_dir / "recent_http.db"
+        db = Database(db_path)
+        await db.initialize()
+
+        try:
+            # Insert several HTTP uploads
+            for i in range(5):
+                await db.insert_capture(
+                    filename=f"http_{i}.m4a",
+                    original_path=f"/path/http_{i}.m4a",
+                    source="http",
+                )
+
+            # Insert a watcher upload (should not appear)
+            await db.insert_capture(
+                filename="watcher.m4a",
+                original_path="/path/watcher.m4a",
+                source="watcher",
+            )
+
+            # Get recent HTTP uploads
+            recent = await db.get_recent_http_uploads(limit=3)
+
+            assert len(recent) == 3
+            assert all(c.source == "http" for c in recent)
+        finally:
+            await db.close()
+
+
+# ============================================================================
 # Integration Tests
 # ============================================================================
 
@@ -492,6 +704,7 @@ class TestCLIIntegration:
         assert "Show processing queue status" in result.output
         assert "--verbose" in result.output
         assert "--failed" in result.output
+        assert "--http" in result.output
 
 
 # ============================================================================

@@ -538,6 +538,7 @@ class FolderWatcher:
             device=device.value,
             captured_at=captured_at,
             current_path=current_path,
+            source="watcher",
         )
 
         # Update daily stats

@@ -7,6 +7,7 @@ Usage:
     python -m src.cli.queue_status
     python -m src.cli.queue_status --verbose
     python -m src.cli.queue_status --failed
+    python -m src.cli.queue_status --http
 
 Exit codes:
     0 - Status retrieved successfully
@@ -16,6 +17,7 @@ Exit codes:
 import asyncio
 import sys
 from datetime import datetime
+from typing import Optional
 
 import click
 from rich.console import Console
@@ -254,6 +256,135 @@ def print_in_progress_items(status: dict, console: Console) -> None:
     console.print(table)
 
 
+def print_http_server_status(settings, console: Console) -> None:
+    """Print HTTP server configuration status."""
+    console.print()
+
+    http_settings = settings.http
+
+    if http_settings.enabled:
+        auth_status = "[green]enabled[/green]" if http_settings.api_key else "[yellow]disabled[/yellow]"
+        status_line = f"[green]Enabled[/green] on {http_settings.host}:{http_settings.port} (auth: {auth_status})"
+    else:
+        status_line = "[dim]Disabled[/dim]"
+
+    console.print(f"[bold]HTTP Server:[/bold] {status_line}")
+
+
+async def get_http_stats(db: Database) -> dict:
+    """Get HTTP upload statistics.
+
+    Args:
+        db: Database instance.
+
+    Returns:
+        Dict with HTTP stats.
+    """
+    source_stats = await db.get_source_stats(hours=24)
+    recent_http = await db.get_recent_http_uploads(limit=10)
+
+    http_stats = source_stats.get("http", {})
+    watcher_stats = source_stats.get("watcher", {})
+
+    http_total = sum(http_stats.values())
+    watcher_total = sum(watcher_stats.values())
+
+    return {
+        "http_stats": http_stats,
+        "watcher_stats": watcher_stats,
+        "http_total_24h": http_total,
+        "watcher_total_24h": watcher_total,
+        "recent_http": recent_http,
+    }
+
+
+def print_http_stats(http_data: dict, console: Console, verbose: bool = False) -> None:
+    """Print HTTP upload statistics."""
+    console.print()
+
+    # Summary table
+    table = Table(title="Upload Sources (Last 24 Hours)", show_header=True)
+    table.add_column("Source", style="cyan")
+    table.add_column("Total", justify="right")
+    table.add_column("Complete", justify="right", style="green")
+    table.add_column("Failed", justify="right", style="red")
+    table.add_column("Pending", justify="right", style="yellow")
+
+    # HTTP row
+    http_stats = http_data["http_stats"]
+    http_complete = http_stats.get("complete", 0)
+    http_failed = http_stats.get("failed", 0)
+    http_pending = http_stats.get("pending", 0) + http_stats.get("transcribing", 0) + \
+                   http_stats.get("classifying", 0) + http_stats.get("posting", 0)
+
+    table.add_row(
+        "HTTP Upload",
+        str(http_data["http_total_24h"]),
+        str(http_complete),
+        str(http_failed),
+        str(http_pending),
+    )
+
+    # Watcher row
+    watcher_stats = http_data["watcher_stats"]
+    watcher_complete = watcher_stats.get("complete", 0)
+    watcher_failed = watcher_stats.get("failed", 0)
+    watcher_pending = watcher_stats.get("pending", 0) + watcher_stats.get("transcribing", 0) + \
+                      watcher_stats.get("classifying", 0) + watcher_stats.get("posting", 0)
+
+    table.add_row(
+        "Folder Watcher",
+        str(http_data["watcher_total_24h"]),
+        str(watcher_complete),
+        str(watcher_failed),
+        str(watcher_pending),
+    )
+
+    console.print(table)
+
+    # Recent HTTP uploads
+    recent = http_data["recent_http"]
+    if recent:
+        console.print()
+
+        recent_table = Table(title="Recent HTTP Uploads", show_header=True)
+        recent_table.add_column("ID", style="cyan", justify="right")
+        recent_table.add_column("Filename")
+        recent_table.add_column("Status")
+        recent_table.add_column("Template")
+        recent_table.add_column("Created At")
+
+        for capture in recent:
+            status_style = {
+                "complete": "green",
+                "failed": "red",
+                "pending": "yellow",
+            }.get(capture.status, "dim")
+
+            created = capture.created_at
+            if created:
+                if isinstance(created, str):
+                    created_str = created[:19]
+                else:
+                    created_str = created.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                created_str = "-"
+
+            template = capture.template_name or "-"
+
+            recent_table.add_row(
+                str(capture.id),
+                capture.filename[:40] + "..." if len(capture.filename) > 40 else capture.filename,
+                f"[{status_style}]{capture.status}[/{status_style}]",
+                template,
+                created_str,
+            )
+
+        console.print(recent_table)
+    else:
+        console.print("\n[dim]No HTTP uploads in the last 24 hours.[/dim]")
+
+
 @click.command()
 @click.option(
     "--verbose", "-v",
@@ -275,11 +406,17 @@ def print_in_progress_items(status: dict, console: Console) -> None:
     is_flag=True,
     help="Show only in-progress items",
 )
+@click.option(
+    "--http", "-H",
+    is_flag=True,
+    help="Show HTTP server status and upload statistics",
+)
 def queue_status_cli(
     verbose: bool,
     failed: bool,
     pending: bool,
     in_progress: bool,
+    http: bool,
 ) -> None:
     """Show processing queue status.
 
@@ -291,6 +428,7 @@ def queue_status_cli(
         python -m src.cli.queue_status --verbose
         python -m src.cli.queue_status --failed
         python -m src.cli.queue_status --pending
+        python -m src.cli.queue_status --http
 
     Exit codes:
         0 - Status retrieved successfully
@@ -309,6 +447,17 @@ def queue_status_cli(
             await db.initialize()
 
             try:
+                # HTTP-only view
+                if http:
+                    print_http_server_status(settings, console)
+                    http_data = await get_http_stats(db)
+                    print_http_stats(http_data, console, verbose)
+
+                    # Show timestamp
+                    console.print()
+                    console.print(f"[dim]As of: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC[/dim]")
+                    return 0
+
                 status = await get_queue_status(db)
 
                 # Filter view mode
@@ -316,6 +465,8 @@ def queue_status_cli(
 
                 if show_all:
                     print_summary(status, console)
+                    # Also show HTTP server status in the default view
+                    print_http_server_status(settings, console)
 
                 if show_all or failed:
                     print_failed_items(status["failed"], console, verbose)
