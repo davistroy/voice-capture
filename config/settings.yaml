@@ -71,3 +71,21 @@ audio:
   max_size_mb: 100
   # Maximum duration in seconds (1 hour)
   max_duration_seconds: 3600
+
+# HTTP Upload Server Configuration
+# Alternative ingestion path for direct uploads via iOS Shortcuts over Tailscale
+http:
+  # Enable HTTP upload server (disabled by default for backward compatibility)
+  enabled: false
+  # Host address to bind to (0.0.0.0 for all interfaces)
+  host: "0.0.0.0"
+  # Port to listen on
+  port: 8080
+  # Optional API key for authentication (Tailscale provides network security)
+  # api_key: your-secret-key-here
+  # Maximum upload file size in MB
+  max_upload_mb: 100
+  # Request timeout in seconds
+  request_timeout_seconds: 60
+  # Allowed CORS origins (empty list for no CORS)
+  cors_origins: []

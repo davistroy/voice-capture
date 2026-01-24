@@ -230,6 +230,55 @@ class AudioSettings(BaseSettings):
     )
 
 
+class HttpServerSettings(BaseSettings):
+    """HTTP upload server configuration.
+
+    The HTTP server provides an alternative ingestion path for audio files,
+    allowing direct uploads via iOS Shortcuts over Tailscale instead of
+    going through Google Drive/rclone.
+
+    Environment variables (HTTP_ENABLED, HTTP_PORT, etc.) are handled by
+    the parent Settings class's model_validator.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore")
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable HTTP upload server (disabled by default for backward compatibility)",
+    )
+    host: str = Field(
+        default="0.0.0.0",
+        description="Host address to bind to",
+    )
+    port: int = Field(
+        default=8080,
+        ge=1,
+        le=65535,
+        description="Port to listen on",
+    )
+    api_key: str | None = Field(
+        default=None,
+        description="Optional API key for authentication (Tailscale provides network security)",
+    )
+    max_upload_mb: int = Field(
+        default=100,
+        ge=1,
+        le=500,
+        description="Maximum upload file size in MB",
+    )
+    request_timeout_seconds: int = Field(
+        default=60,
+        ge=10,
+        le=300,
+        description="Request timeout in seconds",
+    )
+    cors_origins: list[str] = Field(
+        default_factory=list,
+        description="Allowed CORS origins (empty for no CORS)",
+    )
+
+
 class Settings(BaseSettings):
     """Main application settings.
 
@@ -294,6 +343,7 @@ class Settings(BaseSettings):
     watcher: WatcherSettings = Field(default_factory=WatcherSettings)
     health_check: HealthCheckSettings = Field(default_factory=HealthCheckSettings)
     audio: AudioSettings = Field(default_factory=AudioSettings)
+    http: HttpServerSettings = Field(default_factory=HttpServerSettings)
 
     @model_validator(mode="before")
     @classmethod
@@ -311,7 +361,30 @@ class Settings(BaseSettings):
                     result[key] = value
             return result
 
-        return deep_merge(yaml_config, data)
+        merged = deep_merge(yaml_config, data)
+
+        # Handle HTTP environment variables for nested settings
+        # This allows HTTP_* env vars to override http.* YAML settings
+        http_env_mapping = {
+            "HTTP_ENABLED": ("http", "enabled", lambda v: v.lower() in ("true", "1", "yes")),
+            "HTTP_HOST": ("http", "host", str),
+            "HTTP_PORT": ("http", "port", int),
+            "HTTP_API_KEY": ("http", "api_key", str),
+            "HTTP_MAX_UPLOAD_MB": ("http", "max_upload_mb", int),
+            "HTTP_REQUEST_TIMEOUT_SECONDS": ("http", "request_timeout_seconds", int),
+        }
+
+        for env_var, (section, key, converter) in http_env_mapping.items():
+            env_value = os.environ.get(env_var)
+            if env_value is not None:
+                if section not in merged:
+                    merged[section] = {}
+                try:
+                    merged[section][key] = converter(env_value)
+                except (ValueError, TypeError):
+                    pass  # Let validation catch invalid values
+
+        return merged
 
     def validate_required_for_production(self) -> list[str]:
         """Validate that all required settings are configured.

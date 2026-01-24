@@ -1182,7 +1182,7 @@ iOS → HTTP POST (Tailscale) → processing/ → pipeline → response
 
 ### Work Items
 
-#### 5.1 HTTP Server Configuration
+#### 5.1 HTTP Server Configuration ✅ Completed 2026-01-24
 
 **Requirement Refs:** TDD §6.1, TDD §6.2
 **Files Affected:**
@@ -1194,7 +1194,7 @@ iOS → HTTP POST (Tailscale) → processing/ → pipeline → response
 Add configuration settings for the HTTP upload server following existing Pydantic patterns. The server should be disabled by default to avoid breaking changes.
 
 **Tasks:**
-1. [ ] Create `HttpServerSettings` class in settings.py:
+1. [x] Create `HttpServerSettings` class in settings.py:
    ```python
    class HttpServerSettings(BaseModel):
        enabled: bool = False
@@ -1205,27 +1205,27 @@ Add configuration settings for the HTTP upload server following existing Pydanti
        request_timeout_seconds: int = 60
        cors_origins: list[str] = []
    ```
-2. [ ] Add `http: HttpServerSettings` to main `Settings` class
-3. [ ] Add HTTP section to `config/settings.yaml`:
+2. [x] Add `http: HttpServerSettings` to main `Settings` class
+3. [x] Add HTTP section to `config/settings.yaml`:
    ```yaml
    http:
      enabled: false
      port: 8080
      # api_key: optional-shared-secret
    ```
-4. [ ] Add HTTP environment variables to `.env.example`:
+4. [x] Add HTTP environment variables to `.env.example`:
    ```bash
    HTTP_ENABLED=true
    HTTP_PORT=8080
    HTTP_API_KEY=optional-secret
    ```
-5. [ ] Write unit tests for settings loading with HTTP config
+5. [x] Write unit tests for settings loading with HTTP config
 
 **Acceptance Criteria:**
-- [ ] HTTP settings load correctly from environment and YAML
-- [ ] Disabled by default (no breaking change)
-- [ ] Settings validation rejects invalid port/size values
-- [ ] Existing settings tests still pass
+- [x] HTTP settings load correctly from environment and YAML
+- [x] Disabled by default (no breaking change)
+- [x] Settings validation rejects invalid port/size values
+- [x] Existing settings tests still pass
 
 ---
 
@@ -1627,7 +1627,7 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 ## Implementation Status
 
 **Phases 1-4:** Complete (2026-01-21)
-**Phase 5:** Not Started
+**Phase 5:** In Progress
 
 | Phase | Work Items | Status |
 |-------|------------|--------|
@@ -1635,7 +1635,7 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 | Phase 2: Classification & Templates | 5 items (2.1-2.5) | ✅ Complete 2026-01-20 |
 | Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | ✅ Complete 2026-01-21 |
 | Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | ✅ Complete 2026-01-20 |
-| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | ⬜ Not Started |
+| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1 complete) |
 
 ---
 
