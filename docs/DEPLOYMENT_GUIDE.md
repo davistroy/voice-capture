@@ -1025,28 +1025,37 @@ SYNTHESIS:   claude "Run weekly-voice-synthesis"
 │  Complication   │────▶│    Shortcut     │────▶│    Record       │
 └─────────────────┘     └─────────────────┘     └────────┬────────┘
                                                          │
-                                                         ▼
-                                               ┌─────────────────┐
-                                               │  Google Drive   │
-                                               │ /VoiceCaptures/ │
-                                               │     inbox/      │
-                                               └────────┬────────┘
-                                                         │ rclone sync
-                                                         ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                        Docker Host (UNRAID)                        │
-│  ┌──────────────┐     ┌──────────────────────────────────────┐    │
-│  │   rclone     │────▶│         voice-capture                │    │
-│  │   service    │     │  ┌────────┐  ┌────────┐  ┌────────┐ │    │
-│  └──────────────┘     │  │Watcher │─▶│Whisper │─▶│Claude  │ │    │
-│                       │  └────────┘  │  API   │  │  API   │ │    │
-│                       │              └────────┘  └───┬────┘ │    │
-│                       │                              │      │    │
-│                       │              ┌───────────────▼────┐ │    │
-│                       │              │    Notion API      │ │    │
-│                       │              └────────────────────┘ │    │
-│                       └──────────────────────────────────────┘    │
-└────────────────────────────────────────────────────────────────────┘
+                                    ┌────────────────────┼────────────────────┐
+                                    │                    │                    │
+                                    ▼                    ▼                    │
+                          ┌─────────────────┐  ┌─────────────────┐           │
+                          │  Google Drive   │  │  HTTP Upload    │           │
+                          │ /VoiceCaptures/ │  │  (Tailscale)    │           │
+                          │     inbox/      │  │  Port 8080      │           │
+                          └────────┬────────┘  └────────┬────────┘           │
+                                   │ rclone sync        │ direct upload      │
+                                   │ (2-5 min)          │ (5-15 sec)         │
+                                   ▼                    ▼                    │
+┌────────────────────────────────────────────────────────────────────────────┤
+│                        Docker Host (UNRAID)                                │
+│  ┌──────────────┐     ┌──────────────────────────────────────────────┐    │
+│  │   rclone     │────▶│              voice-capture                   │    │
+│  │   service    │     │  ┌────────┐  ┌────────┐                     │    │
+│  └──────────────┘     │  │Watcher │──│        │  ┌────────┐         │    │
+│                       │  └────────┘  │        │  │HTTP    │◀────────│────┘
+│                       │              │Pipeline│◀─│Server  │         │
+│                       │              │        │  │:8080   │         │
+│                       │              │        │  └────────┘         │
+│                       │              └───┬────┘                     │
+│                       │                  │                          │
+│                       │    ┌─────────────┼─────────────┐            │
+│                       │    ▼             ▼             ▼            │
+│                       │ ┌────────┐  ┌────────┐  ┌────────────┐      │
+│                       │ │Whisper │  │Claude  │  │ Notion API │      │
+│                       │ │  API   │  │  API   │  │            │      │
+│                       │ └────────┘  └────────┘  └────────────┘      │
+│                       └──────────────────────────────────────────────┘    │
+└────────────────────────────────────────────────────────────────────────────┘
                                                          │
                                                          ▼
                                                ┌─────────────────┐
@@ -1058,4 +1067,347 @@ SYNTHESIS:   claude "Run weekly-voice-synthesis"
 
 ---
 
-*Guide version: 1.0.0 | Last updated: 2026-01-21*
+## Part 11: HTTP Upload Endpoint (Alternative Ingestion)
+
+The HTTP upload endpoint provides an alternative to the Google Drive/rclone sync path. Instead of waiting for rclone to poll and sync files, you can POST audio directly from iOS to your server for immediate processing.
+
+### 11.1 Benefits of HTTP Upload
+
+| Approach | Latency | Dependencies | Best For |
+|----------|---------|--------------|----------|
+| Google Drive + rclone | 2-5 minutes | Google Drive, rclone | Reliable, works offline |
+| HTTP Upload (Tailscale) | 5-15 seconds | Tailscale, network | Immediate feedback |
+
+**Both approaches can run simultaneously** — rclone continues syncing while HTTP endpoint accepts direct uploads.
+
+### 11.2 Enable HTTP Upload Server
+
+#### Step 1: Update Environment Variables
+
+Edit your `.env` file:
+
+```bash
+# Enable HTTP upload server
+HTTP_ENABLED=true
+
+# Port for HTTP server (default: 8080)
+HTTP_PORT=8080
+
+# Optional: API key for additional security (Tailscale already provides network security)
+# If set, all requests must include X-API-Key header
+HTTP_API_KEY=your-secret-key-here
+
+# Optional: Adjust timeout for large files
+HTTP_REQUEST_TIMEOUT_SECONDS=60
+```
+
+#### Step 2: Restart the Container
+
+```bash
+cd /mnt/user/appdata/voice-capture  # or your install directory
+docker-compose down
+docker-compose up -d
+```
+
+#### Step 3: Verify HTTP Server is Running
+
+```bash
+# Check logs for HTTP server startup
+docker-compose logs voice-capture | grep -i http
+
+# Should see:
+# HTTP upload server initialized: host=0.0.0.0, port=8080, auth=enabled
+# HTTP upload server listening on http://0.0.0.0:8080
+
+# Test health endpoint
+curl http://localhost:8080/health
+# Should return: {"status": "healthy", ...}
+```
+
+### 11.3 Tailscale Integration
+
+Tailscale provides secure private networking between your devices. With Tailscale, your iPhone can directly reach your home server without exposing it to the public internet.
+
+#### Option A: Tailscale on Host (Recommended for UNRAID)
+
+Best for UNRAID or when you want Tailscale for all services.
+
+1. **Install Tailscale on UNRAID:**
+   - Go to **Apps** → search for **Tailscale**
+   - Install the Tailscale plugin
+   - Follow setup to authenticate with your Tailscale account
+
+2. **Get your Tailscale hostname:**
+   ```bash
+   tailscale status
+   # Note your machine name, e.g., "unraid-server" or IP like 100.x.x.x
+   ```
+
+3. **Container accesses host network:**
+   - No changes needed to docker-compose
+   - Container port 8080 is accessible via host's Tailscale IP
+
+4. **From iPhone with Tailscale:**
+   ```
+   http://unraid-server:8080/api/v1/capture
+   # or
+   http://100.x.x.x:8080/api/v1/capture
+   ```
+
+#### Option B: Tailscale Sidecar Container
+
+For containerized Tailscale alongside voice-capture.
+
+Add to your `docker-compose.yml`:
+
+```yaml
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: voice-capture-tailscale
+    hostname: voice-capture
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: unless-stopped
+
+  voice-capture:
+    # ... existing config ...
+    network_mode: "service:tailscale"
+    depends_on:
+      - tailscale
+
+volumes:
+  tailscale-state:
+```
+
+Generate an auth key at https://login.tailscale.com/admin/settings/keys
+
+#### Option C: Host Network Mode (Simple)
+
+If Tailscale is on the host and you want simplest setup:
+
+```yaml
+services:
+  voice-capture:
+    # ... existing config ...
+    network_mode: "host"
+```
+
+**Note:** With host networking, the container uses the host's network directly. Remove the `ports:` section.
+
+### 11.4 Firewall & Security Considerations
+
+#### Tailscale Already Provides Security
+
+Tailscale creates an encrypted WireGuard tunnel between your devices. Only devices on your Tailscale network (tailnet) can reach the HTTP endpoint. This means:
+
+- **No public exposure** — Port 8080 is not accessible from the internet
+- **Encrypted traffic** — All data is encrypted via WireGuard
+- **Device authentication** — Only your authenticated devices can connect
+
+#### Additional API Key (Optional Defense-in-Depth)
+
+For extra security, enable API key authentication:
+
+```bash
+# In .env
+HTTP_API_KEY=your-secure-random-key
+```
+
+Then include the key in requests:
+```http
+POST /api/v1/capture HTTP/1.1
+X-API-Key: your-secure-random-key
+```
+
+#### If NOT Using Tailscale (Not Recommended)
+
+If you must expose the HTTP endpoint without Tailscale:
+
+1. **Always enable API key authentication**
+2. **Use a reverse proxy** (nginx, Caddy) with:
+   - TLS/HTTPS termination
+   - Rate limiting
+   - IP allowlisting
+3. **Never expose port 8080 directly to the internet**
+
+### 11.5 Testing the HTTP Endpoint
+
+#### Test with curl
+
+```bash
+# Health check (no auth needed)
+curl http://your-tailscale-hostname:8080/health
+
+# Upload a test file (with API key)
+curl -X POST \
+  -H "X-API-Key: your-api-key" \
+  -F "audio=@/path/to/test.m4a" \
+  -F "device=phone" \
+  http://your-tailscale-hostname:8080/api/v1/capture?wait=true
+
+# Success response:
+{
+  "success": true,
+  "capture_id": 42,
+  "status": "complete",
+  "template": "task",
+  "notion_url": "https://notion.so/...",
+  "processing_time_ms": 3450
+}
+```
+
+#### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check (no auth) |
+| `/api/v1/capture` | POST | Upload audio file |
+| `/api/v1/capture/{id}` | GET | Check capture status |
+
+#### Upload Parameters
+
+| Parameter | Location | Required | Description |
+|-----------|----------|----------|-------------|
+| `audio` | form-data | Yes | Audio file (M4A, MP3, WAV, WEBM) |
+| `device` | form-data | No | Device type: watch, phone, http (default: http) |
+| `wait` | query | No | Wait for processing: true/false (default: true) |
+
+---
+
+## Part 12: iOS Shortcut for HTTP Upload
+
+This section describes how to create an iOS Shortcut that uploads directly to your server via the HTTP endpoint.
+
+### 12.1 Prerequisites
+
+1. **Tailscale installed on iPhone** — App Store
+2. **Tailscale connected** — Same tailnet as your server
+3. **HTTP server enabled** — See Part 11
+4. **Just Press Record app** — For recording audio
+
+### 12.2 Create the HTTP Upload Shortcut
+
+#### Step 1: Open Shortcuts App
+
+Open the Shortcuts app on your iPhone.
+
+#### Step 2: Create New Shortcut
+
+1. Tap **+** to create new shortcut
+2. Tap the name at top and rename to **Voice Capture (HTTP)**
+
+#### Step 3: Add Actions
+
+Add these actions in order:
+
+**Action 1: Start New Recording**
+- Search: `Just Press Record`
+- Select: **Start New Recording**
+
+**Action 2: Wait to Return**
+- Search: `Wait to Return`
+- Select: **Wait to Return**
+
+**Action 3: Get Latest Recording**
+- Search: `Just Press Record`
+- Select: **Get Latest Recording**
+
+**Action 4: Get Contents of URL**
+- Search: `Get Contents of URL`
+- Configure:
+  - **URL:** `http://YOUR-TAILSCALE-HOSTNAME:8080/api/v1/capture?wait=true`
+  - **Method:** POST
+  - **Headers:** Add header
+    - **Key:** `X-API-Key`
+    - **Value:** Your API key (if configured)
+  - **Request Body:** Form
+    - Add new field:
+      - **Key:** `audio`
+      - **Value:** Select Magic Variable → **Latest Recording**
+      - **Type:** File
+    - Add new field:
+      - **Key:** `device`
+      - **Value:** `phone` (or `watch` for Apple Watch)
+
+**Action 5: Get Dictionary Value**
+- Search: `Get Dictionary Value`
+- Configure:
+  - **Key:** `success`
+  - **From:** Contents of URL (from previous action)
+
+**Action 6: If**
+- Search: `If`
+- Configure: **If** Dictionary Value **is** 1
+
+**Action 7: (Inside If) Get Dictionary Value**
+- **Key:** `notion_url`
+- **From:** Contents of URL
+
+**Action 8: (Inside If) Show Notification**
+- **Title:** Captured!
+- **Body:** Tap to open in Notion
+- Attach: notion_url variable
+
+**Action 9: (Otherwise) Get Dictionary Value**
+- **Key:** `message`
+- **From:** Contents of URL
+
+**Action 10: (Otherwise) Show Notification**
+- **Title:** Capture Failed
+- **Body:** Message variable
+
+**Action 11: Vibrate Device** (optional, at end)
+
+### 12.3 Complete Shortcut Overview
+
+```
+┌─────────────────────────────────────┐
+│ 1. Start New Recording              │
+│    Just Press Record                │
+├─────────────────────────────────────┤
+│ 2. Wait to Return                   │
+├─────────────────────────────────────┤
+│ 3. Get Latest Recording             │
+│    Just Press Record                │
+├─────────────────────────────────────┤
+│ 4. Get Contents of URL              │
+│    POST http://tailscale:8080/...   │
+│    Headers: X-API-Key               │
+│    Body: audio=[Recording]          │
+├─────────────────────────────────────┤
+│ 5-10. Parse response & notify       │
+└─────────────────────────────────────┘
+```
+
+### 12.4 Apple Watch Integration
+
+The shortcut works from Apple Watch:
+
+1. In Shortcuts app, tap your shortcut
+2. Tap **...** → scroll down
+3. Enable **Show on Apple Watch**
+4. Add shortcut to a Watch face complication
+
+**Note:** HTTP uploads require the iPhone to be reachable (Watch uses iPhone for network). For truly standalone Watch capture, use the Google Drive shortcut instead.
+
+### 12.5 Troubleshooting HTTP Shortcuts
+
+| Problem | Solution |
+|---------|----------|
+| "Could not connect to server" | Check Tailscale is connected. Try `ping` from iPhone terminal app |
+| "Unauthorized" (401) | Check X-API-Key header matches server's HTTP_API_KEY |
+| Request timeout | Increase HTTP_REQUEST_TIMEOUT_SECONDS on server |
+| "Invalid audio format" | Ensure Just Press Record is set to M4A format |
+| Shortcut works but no notification | Check notification permissions for Shortcuts app |
+
+---
+
+*Guide version: 1.1.0 | Last updated: 2026-01-24*

@@ -23,6 +23,11 @@ services:
     container_name: voice-capture
     restart: unless-stopped
 
+    # Expose HTTP port for direct uploads (via Tailscale or internal network)
+    # Port only exposed if HTTP_ENABLED=true in your .env
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+
     # Environment variables from .env file
     environment:
       # API Keys
@@ -42,6 +47,12 @@ services:
       - VOICE_CAPTURE_FAILED_PATH=/app/failed
       - VOICE_CAPTURE_DB_PATH=/app/data/voice_capture.db
       - VOICE_CAPTURE_LOG_PATH=/app/logs
+      # HTTP Upload Server (Phase 5)
+      - HTTP_ENABLED=${HTTP_ENABLED:-false}
+      - HTTP_PORT=${HTTP_PORT:-8080}
+      - HTTP_API_KEY=${HTTP_API_KEY:-}
+      - HTTP_MAX_UPLOAD_MB=${HTTP_MAX_UPLOAD_MB:-100}
+      - HTTP_REQUEST_TIMEOUT_SECONDS=${HTTP_REQUEST_TIMEOUT_SECONDS:-60}
 
     volumes:
       # Persistent data storage

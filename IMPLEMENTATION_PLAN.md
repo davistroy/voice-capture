@@ -1452,7 +1452,7 @@ Integrate the HTTP server into the main application lifecycle. The server runs a
 
 ---
 
-#### 5.6 Docker & Deployment Updates
+#### 5.6 Docker & Deployment Updates ✅ Completed 2026-01-24
 
 **Requirement Refs:** TDD §8.5
 **Files Affected:**
@@ -1464,7 +1464,7 @@ Integrate the HTTP server into the main application lifecycle. The server runs a
 Update Docker configuration to expose HTTP port and document Tailscale integration options.
 
 **Tasks:**
-1. [ ] Update `docker-compose.yml`:
+1. [x] Update `docker-compose.yml`:
    ```yaml
    services:
      voice-capture:
@@ -1475,18 +1475,18 @@ Update Docker configuration to expose HTTP port and document Tailscale integrati
          - HTTP_PORT=${HTTP_PORT:-8080}
          - HTTP_API_KEY=${HTTP_API_KEY:-}
    ```
-2. [ ] Document Tailscale integration options in DEPLOYMENT_GUIDE.md:
+2. [x] Document Tailscale integration options in DEPLOYMENT_GUIDE.md:
    - Option A: Tailscale on host, container uses host network
    - Option B: Tailscale sidecar container
    - Option C: Tailscale installed in voice-capture container
-3. [ ] Add HTTP endpoint setup section to deployment guide
-4. [ ] Document firewall considerations (Tailscale-only access)
+3. [x] Add HTTP endpoint setup section to deployment guide
+4. [x] Document firewall considerations (Tailscale-only access)
 
 **Acceptance Criteria:**
-- [ ] HTTP port exposed in docker-compose
-- [ ] Environment variables documented
-- [ ] Tailscale integration options documented
-- [ ] Security considerations documented
+- [x] HTTP port exposed in docker-compose
+- [x] Environment variables documented
+- [x] Tailscale integration options documented
+- [x] Security considerations documented
 
 ---
 
@@ -1637,7 +1637,7 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 | Phase 2: Classification & Templates | 5 items (2.1-2.5) | ✅ Complete 2026-01-20 |
 | Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | ✅ Complete 2026-01-21 |
 | Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | ✅ Complete 2026-01-20 |
-| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1-5.5 complete) |
+| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1-5.6 complete) |
 
 ---
 
