@@ -7,15 +7,15 @@ name = "voice-capture"
 version = "1.0.0"
 description = "Voice capture to Notion pipeline - transforms audio recordings into structured Notion pages"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Proprietary"}
 requires-python = ">=3.10"
 authors = [
     {name = "Troy Davis", email = "troy@stratfieldconsulting.com"}
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
+    "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
