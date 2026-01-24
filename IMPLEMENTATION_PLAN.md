@@ -1404,17 +1404,18 @@ Implement optional API key authentication middleware. Tailscale already provides
 
 ---
 
-#### 5.5 Main Application Integration
+#### 5.5 Main Application Integration ✅ Completed 2026-01-24
 
 **Requirement Refs:** TDD §8.2
 **Files Affected:**
 - `src/main.py` (modify)
+- `tests/test_main.py` (create)
 
 **Description:**
 Integrate the HTTP server into the main application lifecycle. The server runs alongside the folder watcher when enabled.
 
 **Tasks:**
-1. [ ] Add HTTP server initialization in `VoiceCaptureApp.initialize()`:
+1. [x] Add HTTP server initialization in `VoiceCaptureApp.initialize()`:
    ```python
    if self.settings.http.enabled:
        self._http_server = HttpUploadServer(
@@ -1425,7 +1426,7 @@ Integrate the HTTP server into the main application lifecycle. The server runs a
            orchestrator=self._orchestrator,
        )
    ```
-2. [ ] Start HTTP server in `run()` alongside watcher:
+2. [x] Start HTTP server in `run()` alongside watcher:
    ```python
    tasks = []
    tasks.append(self._watcher.start())
@@ -1434,20 +1435,20 @@ Integrate the HTTP server into the main application lifecycle. The server runs a
        logger.info(f"HTTP server listening on {self.settings.http.host}:{self.settings.http.port}")
    await asyncio.gather(*tasks)
    ```
-3. [ ] Add HTTP server shutdown in `shutdown()`:
+3. [x] Add HTTP server shutdown in `shutdown()`:
    ```python
    if self._http_server:
        await self._http_server.stop()
    ```
-4. [ ] Add startup log message indicating HTTP status
-5. [ ] Update integration tests
+4. [x] Add startup log message indicating HTTP status
+5. [x] Update integration tests
 
 **Acceptance Criteria:**
-- [ ] HTTP server starts when enabled
-- [ ] HTTP server does not start when disabled
-- [ ] Graceful shutdown stops HTTP server
-- [ ] Watcher and HTTP server run concurrently
-- [ ] Startup logs show HTTP server status
+- [x] HTTP server starts when enabled
+- [x] HTTP server does not start when disabled
+- [x] Graceful shutdown stops HTTP server
+- [x] Watcher and HTTP server run concurrently
+- [x] Startup logs show HTTP server status
 
 ---
 
@@ -1636,7 +1637,7 @@ Enhance the queue status CLI to show HTTP server status and recent HTTP uploads.
 | Phase 2: Classification & Templates | 5 items (2.1-2.5) | ✅ Complete 2026-01-20 |
 | Phase 3: Reliability & Notifications | 5 items (3.1-3.5) | ✅ Complete 2026-01-21 |
 | Phase 4: Weekly Synthesis | 5 items (4.1-4.5) | ✅ Complete 2026-01-20 |
-| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1-5.4 complete) |
+| Phase 5: HTTP Upload Endpoint | 8 items (5.1-5.8) | 🔄 In Progress (5.1-5.5 complete) |
 
 ---
 
