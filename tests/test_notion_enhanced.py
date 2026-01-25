@@ -625,24 +625,24 @@ class TestDeviceAndTypeProperties:
     """Tests for device and type property helper functions."""
 
     def test_create_device_property_watch(self):
-        """Test device property for watch."""
+        """Test device property passes through exactly as provided."""
         result = create_device_property("watch")
-        assert result == {"rich_text": [{"type": "text", "text": {"content": "Watch"}}]}
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "watch"}}]}
 
     def test_create_device_property_phone(self):
-        """Test device property for phone."""
-        result = create_device_property("phone")
+        """Test device property passes through exactly as provided."""
+        result = create_device_property("Phone")
         assert result == {"rich_text": [{"type": "text", "text": {"content": "Phone"}}]}
 
     def test_create_device_property_custom(self):
-        """Test device property passes through custom names."""
-        result = create_device_property("ipad")
-        assert result == {"rich_text": [{"type": "text", "text": {"content": "Ipad"}}]}
+        """Test device property passes through custom names exactly."""
+        result = create_device_property("iPhone 15 Pro")
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "iPhone 15 Pro"}}]}
 
-    def test_create_device_property_uppercase(self):
-        """Test device property handles uppercase."""
-        result = create_device_property("TABLET")
-        assert result == {"rich_text": [{"type": "text", "text": {"content": "Tablet"}}]}
+    def test_create_device_property_preserves_case(self):
+        """Test device property preserves original case."""
+        result = create_device_property("Apple Watch")
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Apple Watch"}}]}
 
     def test_create_device_property_empty(self):
         """Test device property defaults to Unknown for empty input."""
@@ -977,7 +977,7 @@ class TestNotionServiceEnhanced:
             assert "Type" in properties
             assert properties["Type"]["select"]["name"] == "Task"
             assert "Device" in properties
-            assert properties["Device"]["rich_text"][0]["text"]["content"] == "Watch"
+            assert properties["Device"]["rich_text"][0]["text"]["content"] == "watch"
             assert "Tags" in properties
             assert len(properties["Tags"]["multi_select"]) == 3
 

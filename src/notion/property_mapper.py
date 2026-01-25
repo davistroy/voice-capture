@@ -336,10 +336,9 @@ def create_device_property(device: str) -> Dict[str, Any]:
     Returns:
         Notion rich_text property object.
     """
-    # Use the device string as-is, capitalizing first letter for display
-    # This allows any device name from the iOS shortcut to pass through
+    # Pass through the device string exactly as provided
     stripped = device.strip() if device else ""
-    display_name = stripped.capitalize() if stripped else "Unknown"
+    display_name = stripped if stripped else "Unknown"
 
     return {
         "rich_text": [
