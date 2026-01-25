@@ -258,6 +258,9 @@ class PipelineOrchestrator:
                     if capture.status == "failed":
                         self._record_circuit_failure()
                         return self._failure_result(capture, ProcessingStage.TRANSCRIBING)
+                    elif capture.status in ("pending", "transcribing"):
+                        # Retryable error occurred - status unchanged, will retry later
+                        return self._failure_result(capture, ProcessingStage.TRANSCRIBING)
 
             # Stage 2: Classification (Phase 1: skip, use generic template)
             # State preservation: Skip if classification already exists
@@ -272,12 +275,18 @@ class PipelineOrchestrator:
                     if capture.status == "failed":
                         self._record_circuit_failure()
                         return self._failure_result(capture, ProcessingStage.CLASSIFYING)
+                    elif capture.status == "classifying":
+                        # Retryable error occurred - status unchanged, will retry later
+                        return self._failure_result(capture, ProcessingStage.CLASSIFYING)
 
             # Stage 3: Posting to Notion
             if capture.status == "posting":
                 capture = await self._do_posting(capture)
                 if capture.status == "failed":
                     self._record_circuit_failure()
+                    return self._failure_result(capture, ProcessingStage.POSTING)
+                elif capture.status == "posting":
+                    # Retryable error occurred - status unchanged, will retry later
                     return self._failure_result(capture, ProcessingStage.POSTING)
 
             # Success!
