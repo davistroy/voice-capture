@@ -358,7 +358,8 @@ class ResponseParser:
         Apply confidence threshold logic and create final result.
 
         If confidence is below threshold and template is not already
-        the fallback, switch to fallback template.
+        the fallback, switch to fallback template BUT preserve all
+        extracted fields for potential use.
 
         Args:
             parsed: Validated parsed response.
@@ -383,22 +384,25 @@ class ResponseParser:
             # Get the fallback template to apply its defaults
             fallback = self.template_loader.get_template(self.fallback_template)
 
-            # Preserve some fields that are common
-            preserved_fields = {}
+            # IMPORTANT: Preserve ALL extracted fields, not just those in fallback template
+            # This ensures valuable data like priority, due_date, etc. is not lost
+            preserved_fields = dict(parsed.fields)
+
+            # Add any missing defaults from the fallback template
             if fallback:
                 for field_config in fallback.fields:
-                    if field_config.name in parsed.fields:
-                        preserved_fields[field_config.name] = parsed.fields[field_config.name]
-                    elif field_config.name == "summary" and parsed.fields:
-                        # Generate summary from first non-empty field
-                        for v in parsed.fields.values():
-                            if v and isinstance(v, str):
-                                preserved_fields["summary"] = v[:500]
-                                break
-                    elif field_config.default is not None:
-                        preserved_fields[field_config.name] = field_config.default
+                    if field_config.name not in preserved_fields:
+                        if field_config.name == "summary" and parsed.fields:
+                            # Generate summary from first non-empty field
+                            for v in parsed.fields.values():
+                                if v and isinstance(v, str):
+                                    preserved_fields["summary"] = v[:500]
+                                    break
+                        elif field_config.default is not None:
+                            preserved_fields[field_config.name] = field_config.default
 
-            # Store original template suggestion in reasoning
+            # Store original template suggestion in reasoning and in fields
+            preserved_fields["_original_template"] = template_name
             reasoning = (
                 f"Classified as '{template_name}' with confidence {confidence:.2f}, "
                 f"but fell back to '{self.fallback_template}' due to low confidence. "

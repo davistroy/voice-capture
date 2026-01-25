@@ -130,11 +130,14 @@ fields:
     type: select
     description: Priority level
     extraction: |
-      Assess priority based on impact and urgency described.
-      - High: critical bug, blocking issue, key feature, significant user impact
-      - Medium: important improvement, moderate impact, standard feature
-      - Low: nice-to-have, minor improvement, polish item
-      Default to Medium if unclear.
+      Extract priority from explicit mentions and impact/urgency language.
+      - High: "high-priority", "high priority", "critical", "urgent", "blocking",
+        "important", "ASAP", "significant impact", "key feature"
+      - Medium: important improvement, moderate impact, standard feature, no urgency mentioned
+      - Low: "low-priority", "low priority", "nice-to-have", "minor", "polish item",
+        "when we get a chance", "backlog"
+      IMPORTANT: If the text contains "high-priority" or "high priority", ALWAYS return "High".
+      Default to Medium only if no priority language is present.
     required: false
     default: Medium
     options:
@@ -152,6 +155,15 @@ fields:
       feature area, sprint/milestone, technology involved.
     required: false
     notion_property: Tags
+
+  - name: transcription
+    type: rich_text
+    description: Full raw transcript text
+    extraction: |
+      Copy the COMPLETE original transcript text exactly as provided.
+      Do not summarize, edit, or modify the text in any way.
+    required: true
+    notion_property: Transcription
 
 notion:
   database_id: ${NOTION_VOICE_CAPTURES_DB_ID}

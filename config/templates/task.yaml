@@ -51,9 +51,13 @@ fields:
     type: title
     description: Concise action item
     extraction: |
-      Extract the core action as a brief imperative statement.
+      Extract ONLY the core action item as a brief imperative statement.
       Start with a verb (e.g., "Review quarterly report", "Call John about project").
       Keep it under 10 words. Be specific but concise.
+      DO NOT include meta-language like "Create a task called" or "Remind me to".
+      DO NOT include priority or deadline information in the title.
+      Example: "Create a high-priority task called Get Truck Brakes Fixed due Friday"
+        -> Title should be: "Get Truck Brakes Fixed" (NOT the whole sentence)
     required: true
     notion_property: Task
 
@@ -68,10 +72,15 @@ fields:
     type: date
     description: Deadline if mentioned
     extraction: |
-      Extract explicit date/time references.
-      Look for: specific dates, "by Friday", "next week", "tomorrow", "end of day",
-      "before the meeting", "ASAP", relative time references.
-      Leave empty if no deadline is mentioned or implied.
+      Extract explicit date/time references and CONVERT them to ISO 8601 format (YYYY-MM-DD).
+      Use the current date from metadata to calculate actual dates:
+      - "tomorrow" -> add 1 day to current date
+      - "next Friday" -> find the next Friday after current date
+      - "next week" -> add 7 days to current date
+      - "end of month" -> last day of current month
+      - Specific dates like "January 30" -> "2026-01-30"
+      Leave empty (null) if no deadline is mentioned or implied.
+      IMPORTANT: Output MUST be in YYYY-MM-DD format, NOT relative text.
     required: false
     notion_property: Due Date
 
@@ -79,11 +88,14 @@ fields:
     type: select
     description: Task priority level
     extraction: |
-      Infer from urgency language and context.
-      - High: "urgent", "ASAP", "critical", "important", "time-sensitive", "blocking"
-      - Medium: normal tasks, moderate urgency, standard deadlines
-      - Low: "when you get a chance", "eventually", "nice to have", "backlog"
-      Default to Medium if unclear.
+      Extract priority from explicit mentions and urgency language.
+      - High: "high-priority", "high priority", "urgent", "ASAP", "critical",
+        "important", "time-sensitive", "blocking", "immediately", "right away"
+      - Medium: normal tasks, moderate urgency, standard deadlines, no urgency mentioned
+      - Low: "low-priority", "low priority", "when you get a chance", "eventually",
+        "nice to have", "backlog", "someday"
+      IMPORTANT: If the text contains "high-priority" or "high priority", ALWAYS return "High".
+      Default to Medium only if no priority language is present.
     required: false
     default: Medium
     options:
@@ -126,6 +138,15 @@ fields:
       areas (work, personal, home), people involved.
     required: false
     notion_property: Tags
+
+  - name: transcription
+    type: rich_text
+    description: Full raw transcript text
+    extraction: |
+      Copy the COMPLETE original transcript text exactly as provided.
+      Do not summarize, edit, or modify the text in any way.
+    required: true
+    notion_property: Transcription
 
 notion:
   database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
