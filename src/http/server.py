@@ -414,10 +414,13 @@ class HttpUploadServer:
                 processing_time_ms = int((time.time() - start_time) * 1000)
 
                 if result.success:
+                    # Get the capture record to retrieve template info
+                    capture = await self.db.get_capture_by_id(capture_id)
+                    template = capture.template if capture else None
                     return success_response(
                         capture_id=capture_id,
                         status="complete",
-                        template=result.template,
+                        template=template,
                         notion_url=result.notion_page_url,
                         processing_time_ms=processing_time_ms,
                     )
