@@ -444,17 +444,15 @@ class ContentBuilder:
     def _format_device_name(self, device: str) -> str:
         """Format device name for display.
 
+        Capitalizes the device name. Allows any device name from the
+        iOS shortcut to pass through.
+
         Args:
-            device: Device value (lowercase or any case).
+            device: Device value from capture metadata.
 
         Returns:
-            Formatted device name with title case.
+            Formatted device name with first letter capitalized.
         """
-        device_lower = device.lower()
-        if device_lower == "watch":
-            return "Watch"
-        elif device_lower == "phone":
-            return "Phone"
-        else:
-            return "Unknown"
+        stripped = device.strip() if device else ""
+        return stripped.capitalize() if stripped else "Unknown"
 

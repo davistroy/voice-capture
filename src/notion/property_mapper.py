@@ -328,21 +328,18 @@ class PropertyMapper:
 
 
 def create_device_property(device: str) -> Dict[str, Any]:
-    """Create Device rich_text property with formatted name.
+    """Create Device rich_text property with the provided device name.
 
     Args:
-        device: Device string (watch, phone, unknown).
+        device: Device string from capture metadata (any text).
 
     Returns:
         Notion rich_text property object.
     """
-    device_lower = device.lower()
-    if device_lower == "watch":
-        display_name = "Watch"
-    elif device_lower == "phone":
-        display_name = "Phone"
-    else:
-        display_name = "Unknown"
+    # Use the device string as-is, capitalizing first letter for display
+    # This allows any device name from the iOS shortcut to pass through
+    stripped = device.strip() if device else ""
+    display_name = stripped.capitalize() if stripped else "Unknown"
 
     return {
         "rich_text": [

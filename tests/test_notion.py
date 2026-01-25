@@ -294,15 +294,20 @@ class TestPageBuilder:
         assert summary == "No transcript content."
 
     def test_format_device_name(self):
-        """Test device name formatting."""
+        """Test device name formatting - passes through any device name."""
         builder = PageBuilder()
 
+        # Standard device names
         assert builder._format_device_name("watch") == "Watch"
-        assert builder._format_device_name("WATCH") == "Watch"
         assert builder._format_device_name("phone") == "Phone"
-        assert builder._format_device_name("PHONE") == "Phone"
         assert builder._format_device_name("unknown") == "Unknown"
-        assert builder._format_device_name("other") == "Unknown"
+        # Custom device names pass through with capitalization
+        assert builder._format_device_name("ipad") == "Ipad"
+        assert builder._format_device_name("macbook") == "Macbook"
+        assert builder._format_device_name("TABLET") == "Tablet"
+        # Empty/whitespace defaults to Unknown
+        assert builder._format_device_name("") == "Unknown"
+        assert builder._format_device_name("  ") == "Unknown"
 
 
 # ============================================================================

@@ -55,14 +55,10 @@ fields:
     notion_property: Duration
 
   - name: device
-    type: select
+    type: rich_text
     description: Capture device
     extraction: Use capture metadata device
     required: false
-    options:
-      - Watch
-      - Phone
-      - Unknown
     notion_property: Device
 
   - name: summary

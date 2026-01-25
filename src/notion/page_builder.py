@@ -300,23 +300,16 @@ class PageBuilder:
         return text[:truncate_at] + TRUNCATION_INDICATOR
 
     def _format_device_name(self, device: str) -> str:
-        """Format device name for Notion select property.
+        """Format device name for Notion rich_text property.
 
-        Converts internal device values to display format:
-        - "watch" -> "Watch"
-        - "phone" -> "Phone"
-        - "unknown" -> "Unknown"
+        Capitalizes the device name for display. Allows any device name
+        from the iOS shortcut to pass through.
 
         Args:
-            device: Device value (lowercase or any case).
+            device: Device value from capture metadata.
 
         Returns:
-            Formatted device name with title case.
+            Formatted device name with first letter capitalized.
         """
-        device_lower = device.lower()
-        if device_lower == "watch":
-            return "Watch"
-        elif device_lower == "phone":
-            return "Phone"
-        else:
-            return "Unknown"
+        stripped = device.strip() if device else ""
+        return stripped.capitalize() if stripped else "Unknown"

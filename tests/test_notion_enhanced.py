@@ -634,15 +634,20 @@ class TestDeviceAndTypeProperties:
         result = create_device_property("phone")
         assert result == {"rich_text": [{"type": "text", "text": {"content": "Phone"}}]}
 
-    def test_create_device_property_unknown(self):
-        """Test device property for unknown."""
-        result = create_device_property("other")
-        assert result == {"rich_text": [{"type": "text", "text": {"content": "Unknown"}}]}
+    def test_create_device_property_custom(self):
+        """Test device property passes through custom names."""
+        result = create_device_property("ipad")
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Ipad"}}]}
 
     def test_create_device_property_uppercase(self):
         """Test device property handles uppercase."""
-        result = create_device_property("WATCH")
-        assert result == {"rich_text": [{"type": "text", "text": {"content": "Watch"}}]}
+        result = create_device_property("TABLET")
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Tablet"}}]}
+
+    def test_create_device_property_empty(self):
+        """Test device property defaults to Unknown for empty input."""
+        result = create_device_property("")
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Unknown"}}]}
 
     def test_create_type_property(self):
         """Test type property creation."""
