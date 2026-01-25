@@ -111,7 +111,7 @@ class TestPageBuilder:
         assert props["Date"]["date"]["start"] == captured_at.isoformat()
 
         # Check Device (should be capitalized)
-        assert props["Device"]["select"]["name"] == "Watch"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
 
         # Check Type
         assert props["Type"]["select"]["name"] == "General"
@@ -146,25 +146,25 @@ class TestPageBuilder:
         props = builder.build_properties(
             title="Test", captured_at=captured_at, device="watch"
         )
-        assert props["Device"]["select"]["name"] == "Watch"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
 
         # Test phone
         props = builder.build_properties(
             title="Test", captured_at=captured_at, device="phone"
         )
-        assert props["Device"]["select"]["name"] == "Phone"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "Phone"
 
         # Test unknown
         props = builder.build_properties(
             title="Test", captured_at=captured_at, device="unknown"
         )
-        assert props["Device"]["select"]["name"] == "Unknown"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "Unknown"
 
         # Test uppercase input
         props = builder.build_properties(
             title="Test", captured_at=captured_at, device="WATCH"
         )
-        assert props["Device"]["select"]["name"] == "Watch"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
 
     def test_build_page_content_structure(self):
         """Test page content has correct structure."""
@@ -665,7 +665,7 @@ class TestNotionIntegration:
             # Check properties
             props = call_kwargs["properties"]
             assert props["Type"]["select"]["name"] == "General"
-            assert props["Device"]["select"]["name"] == "Watch"
+            assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
             assert len(props["Tags"]["multi_select"]) == 0
 
             # Check content blocks

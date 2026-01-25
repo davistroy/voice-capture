@@ -328,13 +328,13 @@ class PropertyMapper:
 
 
 def create_device_property(device: str) -> Dict[str, Any]:
-    """Create Device select property with formatted name.
+    """Create Device rich_text property with formatted name.
 
     Args:
         device: Device string (watch, phone, unknown).
 
     Returns:
-        Notion select property object.
+        Notion rich_text property object.
     """
     device_lower = device.lower()
     if device_lower == "watch":
@@ -345,9 +345,12 @@ def create_device_property(device: str) -> Dict[str, Any]:
         display_name = "Unknown"
 
     return {
-        "select": {
-            "name": display_name
-        }
+        "rich_text": [
+            {
+                "type": "text",
+                "text": {"content": display_name}
+            }
+        ]
     }
 
 
