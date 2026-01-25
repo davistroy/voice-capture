@@ -258,7 +258,7 @@ def mock_orchestrator():
     @dataclass
     class MockProcessingResult:
         success: bool
-        template: Optional[str] = None
+        template_name: Optional[str] = None
         notion_page_url: Optional[str] = None
         error: Optional[str] = None
         stage: Optional[str] = None
@@ -267,7 +267,7 @@ def mock_orchestrator():
     orchestrator.process_capture = AsyncMock(
         return_value=MockProcessingResult(
             success=True,
-            template="task",
+            template_name="task",
             notion_page_url="https://notion.so/page-123",
         )
     )
