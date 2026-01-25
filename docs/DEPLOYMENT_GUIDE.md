@@ -212,15 +212,26 @@ This checks:
 
 ## Part 4: iOS Capture Setup
 
-### 4.1 Install Just Press Record
+### 4.1 About Recording Apps (Optional)
 
-1. Download **Just Press Record** from App Store ($4.99)
-2. Enable iCloud sync in app settings
-3. Configure: Audio Quality = High, Format = M4A
+**For this shortcut, we use iOS's built-in "Record Audio" action**, which:
+- Records directly within Shortcuts (no third-party app needed)
+- Provides the audio file as a variable for immediate use
+- Works reliably across iOS versions
+
+**Alternative Recording Apps:**
+
+| App | Shortcuts Support | Notes |
+|-----|-------------------|-------|
+| **Just Press Record** ($4.99) | Limited — only Start/Stop Recording, no file retrieval | Good for standalone Apple Watch use |
+| **Super Whisper** | Check app for available actions | May have better Shortcuts integration |
+| **Voice Memos** (free) | Limited Shortcuts actions | Built-in, no file export action |
+
+If you prefer a third-party app with better Shortcuts support, check its available actions by searching for the app name in Shortcuts. Look for actions that let you **retrieve** the recording file, not just start/stop.
 
 ### 4.2 Create iOS Shortcut
 
-This shortcut records audio and saves it to Google Drive for processing. Follow these steps exactly.
+This shortcut records audio using iOS's native recording and saves it to Google Drive for processing. Follow these steps exactly.
 
 #### Step 1: Open Shortcuts App
 
@@ -234,48 +245,38 @@ This shortcut records audio and saves it to Google Drive for processing. Follow 
 2. You'll see a blank shortcut editor with "New Shortcut" at the top
 3. At the bottom, you'll see "Search for apps and actions" — this is where you'll add each action
 
-#### Step 3: Add "Start Recording" Action
+#### Step 3: Add "Record Audio" Action
 
 1. Tap "**Search for apps and actions**" at the bottom
-2. Type: `Just Press Record`
-3. You'll see the Just Press Record app icon with available actions listed below it
-4. Tap **"Start New Recording"**
-5. **What you should see:** A blue action block appears that says "Start New Recording"
+2. Type: `Record Audio`
+3. Tap **"Record Audio"** (under Media)
+4. **What you should see:** An action block appears that says "Record Audio"
 
-**⚠️ Troubleshooting:** If you don't see Just Press Record:
-- Make sure the app is installed
-- Open Just Press Record once first, then return to Shortcuts
-- Restart your iPhone if it still doesn't appear
+5. **Configure the action:**
+   - Tap **"Audio Quality"** and select **"Very High"** (or High)
+   - Tap **"Start Recording"** dropdown — keep it as **"On Tap"**
+   - Tap **"Finish Recording"** dropdown — keep it as **"On Tap"**
 
-#### Step 4: Add "Wait to Return" Action
+**What this does:** When the shortcut runs, it shows a recording interface. Tap to start, tap again to stop. The recorded audio becomes available as a variable for the next action.
 
-1. Tap "**Search for apps and actions**" again
-2. Type: `Wait to Return`
-3. Tap **"Wait to Return"** (under Scripting)
-4. **What you should see:** A second action block appears below the first
+**⚠️ Troubleshooting:** If you don't see Record Audio:
+- Make sure you're searching in "All Actions" not a specific app
+- It should appear under "Media" category
+- Try scrolling down in search results
 
-**What this does:** When you run the shortcut, it opens Just Press Record to record. This action waits until you finish recording and return to the Shortcuts app.
-
-#### Step 5: Add "Get Latest Recording" Action
-
-1. Tap "**Search for apps and actions**" again
-2. Type: `Just Press Record`
-3. Look for **"Get Latest Recording"** and tap it
-4. **What you should see:** A third action block appears. It may show "Get Latest Recording from Just Press Record"
-
-#### Step 6: Add "Save File" Action
+#### Step 4: Add "Save File" Action
 
 1. Tap "**Search for apps and actions**" again
 2. Type: `Save File`
 3. Tap **"Save File"** (the one with the Files icon, not iCloud-specific)
 4. **What you should see:** A new action block with several configurable options
 
-#### Step 7: Configure the Save File Action (CRITICAL)
+#### Step 5: Configure the Save File Action (CRITICAL)
 
 This is the most important step. You need to configure exactly where files go.
 
 1. In the Save File action block, you'll see:
-   - **Save [Recording]** — this should already show "Recording" from the previous action
+   - **Save [Recorded Audio]** — this should already show "Recorded Audio" from the previous action
    - **Ask Where to Save** toggle — **turn this OFF** (tap the toggle so it's gray, not green)
 
 2. Once you turn off "Ask Where to Save," new options appear:
@@ -290,7 +291,7 @@ This is the most important step. You need to configure exactly where files go.
 
 4. **What you should see:** The Save File action now shows:
    ```
-   Save Recording to /VoiceCaptures/inbox
+   Save Recorded Audio to /VoiceCaptures/inbox
    ```
 
 **⚠️ Troubleshooting — Can't see Google Drive:**
@@ -307,27 +308,22 @@ This is the most important step. You need to configure exactly where files go.
 - Open it, create another folder named exactly: `inbox`
 - Return to Shortcuts and navigate to this folder
 
-#### Step 8: Verify Your Shortcut
+#### Step 6: Verify Your Shortcut
 
-Your completed shortcut should show **4 actions** in this exact order:
+Your completed shortcut should show **2 actions** in this exact order:
 
 ```
 ┌─────────────────────────────────────┐
-│ 1. Start New Recording              │
-│    Just Press Record                │
+│ 1. Record Audio                     │
+│    Quality: Very High               │
+│    Start/Finish: On Tap             │
 ├─────────────────────────────────────┤
-│ 2. Wait to Return                   │
-│    Scripting                        │
-├─────────────────────────────────────┤
-│ 3. Get Latest Recording             │
-│    Just Press Record                │
-├─────────────────────────────────────┤
-│ 4. Save Recording                   │
+│ 2. Save Recorded Audio              │
 │    to /VoiceCaptures/inbox          │
 └─────────────────────────────────────┘
 ```
 
-#### Step 9: Name and Save the Shortcut
+#### Step 7: Name and Save the Shortcut
 
 1. Tap **"New Shortcut"** at the very top of the screen (or the dropdown arrow next to it)
 2. Tap **"Rename"**
@@ -335,18 +331,18 @@ Your completed shortcut should show **4 actions** in this exact order:
 4. Tap **"Done"** on keyboard
 5. Tap **"Done"** in top-right to save the shortcut
 
-#### Step 10: Test the Shortcut
+#### Step 8: Test the Shortcut
 
 **This is critical — test before relying on it!**
 
 1. Find your new shortcut in the Shortcuts app
 2. Tap it to run
 3. **What should happen:**
-   - Just Press Record opens and immediately starts recording (you'll see the red recording indicator)
+   - A recording interface appears with a red record button
+   - Tap the **record button** to start recording
    - Speak a test message: "This is a test recording"
-   - Tap the **stop button** in Just Press Record
-   - You'll be returned to Shortcuts (may see a brief "Running..." indicator)
-   - Shortcut completes
+   - Tap **Stop** when finished
+   - Shortcut completes (may show brief "Running..." indicator)
 
 4. **Verify the file was saved:**
    - Open the **Files** app
@@ -357,7 +353,7 @@ Your completed shortcut should show **4 actions** in this exact order:
 **✅ Success indicators:**
 - File appears in Google Drive within seconds
 - File is playable and contains your test message
-- File name format is something like `2026-01-22 10-30-45.m4a`
+- File name format is something like `Audio Recording 2026-01-22 at 10.30.m4a`
 
 **⚠️ Common problems:**
 
@@ -365,11 +361,11 @@ Your completed shortcut should show **4 actions** in this exact order:
 |---------|----------|
 | Shortcut runs but no file appears | Check Save File destination is set correctly. Recreate the action if needed |
 | "Access denied" or permissions error | Open Files app, navigate to Google Drive manually first to trigger sign-in |
-| Recording is empty/silent | Check Just Press Record has microphone permission in Settings → Privacy → Microphone |
-| Shortcut gets stuck on "Wait to Return" | Make sure you tap STOP in Just Press Record, don't just swipe away |
+| Recording is empty/silent | Check microphone permission in Settings → Privacy → Microphone → Shortcuts |
 | Google Drive folder not found | Create the folders manually in Files app first, then reconfigure the shortcut |
+| File doesn't sync to server | Wait 2-5 minutes for rclone to sync; check server logs |
 
-#### Step 11: Add to Home Screen
+#### Step 9: Add to Home Screen
 
 1. In Shortcuts app, tap and hold on your "Voice Capture" shortcut
 2. Tap **"Details"** (or tap the **"..."** button)
@@ -378,13 +374,32 @@ Your completed shortcut should show **4 actions** in this exact order:
 5. Tap **"Add"** in the top-right
 6. **What you should see:** The shortcut appears on your home screen as an app icon
 
-### 4.3 Apple Watch Complication
+### 4.3 Apple Watch Setup
 
-1. In Shortcuts app, select your shortcut
+The shortcut can run from Apple Watch, but requires iPhone nearby for the recording and file operations.
+
+#### Option A: Shortcut on Watch (Requires iPhone)
+
+1. In Shortcuts app on iPhone, select your "Voice Capture" shortcut
 2. Tap the `...` menu → **Add to Apple Watch**
-3. Add complication to your watch face
+3. On your Apple Watch, add a Shortcuts complication to your watch face
 
-**Usage:** Tap the complication → speak → tap again to stop. File syncs automatically.
+**Usage:** Tap the complication → recording starts (may briefly show on iPhone) → speak → tap to stop → file syncs automatically.
+
+**Note:** The Watch triggers the shortcut, but actual recording happens via iPhone. This works well when both devices are together.
+
+#### Option B: Just Press Record on Watch (Standalone)
+
+For truly standalone Apple Watch recording (without iPhone), use Just Press Record directly:
+
+1. Install **Just Press Record** on Apple Watch
+2. Add the Just Press Record complication to your watch face
+3. Tap to record, tap to stop
+4. Recordings sync to iPhone → iCloud when devices reconnect
+
+**Manual export required:** Just Press Record doesn't expose a "Get Latest Recording" action to Shortcuts, so you'll need to manually share/export recordings from the app to Google Drive, or wait for iCloud sync and set up a separate automation.
+
+**Recommendation:** For the simplest hands-free experience, use **Option A** (Shortcut on Watch) when iPhone is nearby. Use **Option B** only when you need standalone Watch recording without your phone.
 
 ---
 
@@ -1321,9 +1336,10 @@ This section describes how to create an iOS Shortcut that uploads directly to yo
 1. **Tailscale installed on iPhone** — App Store
 2. **Tailscale connected** — Same tailnet as your server
 3. **HTTP server enabled** — See Part 11
-4. **Just Press Record app** — For recording audio
 
 ### 12.2 Create the HTTP Upload Shortcut
+
+This shortcut uses iOS's native "Record Audio" action and uploads directly to your server.
 
 #### Step 1: Open Shortcuts App
 
@@ -1338,82 +1354,100 @@ Open the Shortcuts app on your iPhone.
 
 Add these actions in order:
 
-**Action 1: Start New Recording**
-- Search: `Just Press Record`
-- Select: **Start New Recording**
+**Action 1: Record Audio**
+- Search: `Record Audio`
+- Select: **Record Audio** (under Media)
+- Configure:
+  - **Audio Quality:** Very High
+  - **Start Recording:** On Tap
+  - **Finish Recording:** On Tap
 
-**Action 2: Wait to Return**
-- Search: `Wait to Return`
-- Select: **Wait to Return**
-
-**Action 3: Get Latest Recording**
-- Search: `Just Press Record`
-- Select: **Get Latest Recording**
-
-**Action 4: Get Contents of URL**
+**Action 2: Get Contents of URL**
 - Search: `Get Contents of URL`
+- Select: **Get Contents of URL**
 - Configure:
   - **URL:** `http://YOUR-TAILSCALE-HOSTNAME:8080/api/v1/capture?wait=true`
-  - **Method:** POST
-  - **Headers:** Add header
+    - Replace `YOUR-TAILSCALE-HOSTNAME` with your server's Tailscale hostname or IP (e.g., `unraid-server` or `100.x.x.x`)
+  - **Method:** Tap "GET" and change to **POST**
+  - **Headers:** Tap "Add header"
     - **Key:** `X-API-Key`
-    - **Value:** Your API key (if configured)
-  - **Request Body:** Form
-    - Add new field:
+    - **Value:** Your API key (from HTTP_API_KEY in .env, if configured)
+  - **Request Body:** Tap and select **Form**
+    - Tap "Add new field":
       - **Key:** `audio`
-      - **Value:** Select Magic Variable → **Latest Recording**
-      - **Type:** File
-    - Add new field:
+      - **Value:** Tap and select **Recorded Audio** (magic variable from Action 1)
+      - You may need to tap "Select Variable" and choose from the list
+    - Tap "Add new field":
       - **Key:** `device`
-      - **Value:** `phone` (or `watch` for Apple Watch)
+      - **Value:** `phone`
 
-**Action 5: Get Dictionary Value**
+**Action 3: Get Dictionary Value**
 - Search: `Get Dictionary Value`
 - Configure:
+  - **Get:** `Value`
   - **Key:** `success`
-  - **From:** Contents of URL (from previous action)
+  - **in:** Contents of URL (from previous action, should auto-populate)
 
-**Action 6: If**
+**Action 4: If**
 - Search: `If`
 - Configure: **If** Dictionary Value **is** 1
+- This creates an If/Otherwise/End If block
 
-**Action 7: (Inside If) Get Dictionary Value**
-- **Key:** `notion_url`
-- **From:** Contents of URL
+**Action 5: (Inside If block) Get Dictionary Value**
+- Search: `Get Dictionary Value`
+- Configure:
+  - **Key:** `notion_url`
+  - **in:** Contents of URL
 
-**Action 8: (Inside If) Show Notification**
-- **Title:** Captured!
-- **Body:** Tap to open in Notion
-- Attach: notion_url variable
+**Action 6: (Inside If block) Show Notification**
+- Search: `Show Notification`
+- Configure:
+  - **Title:** `Captured!`
+  - **Body:** Tap and select the **Dictionary Value** (notion_url) variable
 
-**Action 9: (Otherwise) Get Dictionary Value**
-- **Key:** `message`
-- **From:** Contents of URL
+**Action 7: (Inside Otherwise block) Get Dictionary Value**
+- Search: `Get Dictionary Value`
+- Configure:
+  - **Key:** `message`
+  - **in:** Contents of URL
 
-**Action 10: (Otherwise) Show Notification**
-- **Title:** Capture Failed
-- **Body:** Message variable
+**Action 8: (Inside Otherwise block) Show Notification**
+- Search: `Show Notification`
+- Configure:
+  - **Title:** `Capture Failed`
+  - **Body:** Select the **Dictionary Value** (message) variable
 
-**Action 11: Vibrate Device** (optional, at end)
+**Action 9: (After End If) Vibrate Device** (optional)
+- Search: `Vibrate`
+- Provides haptic feedback when complete
+
+#### Step 4: Save the Shortcut
+
+1. Tap **Done** in the top-right corner
+2. Your shortcut is now saved
 
 ### 12.3 Complete Shortcut Overview
 
 ```
 ┌─────────────────────────────────────┐
-│ 1. Start New Recording              │
-│    Just Press Record                │
+│ 1. Record Audio                     │
+│    Quality: Very High               │
 ├─────────────────────────────────────┤
-│ 2. Wait to Return                   │
-├─────────────────────────────────────┤
-│ 3. Get Latest Recording             │
-│    Just Press Record                │
-├─────────────────────────────────────┤
-│ 4. Get Contents of URL              │
+│ 2. Get Contents of URL              │
 │    POST http://tailscale:8080/...   │
 │    Headers: X-API-Key               │
-│    Body: audio=[Recording]          │
+│    Body: audio=[Recorded Audio]     │
 ├─────────────────────────────────────┤
-│ 5-10. Parse response & notify       │
+│ 3. Get Dictionary Value (success)   │
+├─────────────────────────────────────┤
+│ 4. If Dictionary Value is 1         │
+│    ├─ Get Dictionary Value (url)    │
+│    ├─ Show Notification: Captured!  │
+│    Otherwise                        │
+│    ├─ Get Dictionary Value (message)│
+│    └─ Show Notification: Failed     │
+├─────────────────────────────────────┤
+│ 5. Vibrate Device                   │
 └─────────────────────────────────────┘
 ```
 
@@ -1426,18 +1460,19 @@ The shortcut works from Apple Watch:
 3. Enable **Show on Apple Watch**
 4. Add shortcut to a Watch face complication
 
-**Note:** HTTP uploads require the iPhone to be reachable (Watch uses iPhone for network). For truly standalone Watch capture, use the Google Drive shortcut instead.
+**Note:** HTTP uploads require the iPhone to be reachable (Watch uses iPhone for network and recording). For truly standalone Watch capture without iPhone, use the Google Drive shortcut from Part 4 instead.
 
 ### 12.5 Troubleshooting HTTP Shortcuts
 
 | Problem | Solution |
 |---------|----------|
-| "Could not connect to server" | Check Tailscale is connected. Try `ping` from iPhone terminal app |
-| "Unauthorized" (401) | Check X-API-Key header matches server's HTTP_API_KEY |
-| Request timeout | Increase HTTP_REQUEST_TIMEOUT_SECONDS on server |
-| "Invalid audio format" | Ensure Just Press Record is set to M4A format |
+| "Could not connect to server" | Check Tailscale is connected on iPhone. Verify server hostname/IP |
+| "Unauthorized" (401) | Check X-API-Key header matches server's HTTP_API_KEY exactly |
+| Request timeout | Increase HTTP_REQUEST_TIMEOUT_SECONDS on server; check network |
+| Recording is silent/empty | Check Shortcuts has microphone permission in Settings → Privacy |
 | Shortcut works but no notification | Check notification permissions for Shortcuts app |
+| "The request timed out" | Server may be slow; try `?wait=false` to return immediately |
 
 ---
 
-*Guide version: 1.1.0 | Last updated: 2026-01-24*
+*Guide version: 1.2.0 | Last updated: 2026-01-25*
