@@ -2,7 +2,7 @@
 
 **Generated:** 2026-01-20
 **Source Documents:**
-- `docs/PRD.md` - Product Requirements Document v1.0
+- `docs/prd.md` - Product Requirements Document v1.0
 - `docs/TDD.md` - Technical Design Document v1.0
 
 **Total Phases:** 4
@@ -2527,4 +2527,4 @@ Low priority—improves consistency but doesn't affect functionality.
 *Phase 5 completed: 2026-01-24*
 *Phase 6 added: 2026-01-24 (Technical Debt Remediation from Architectural Review)*
 *Phase 6 completed: 2026-01-24*
-*Source documents: docs/PRD.md v1.0, docs/TDD.md v1.0, User requirements, Architectural Review*
+*Source documents: docs/prd.md v1.0, docs/TDD.md v1.0, User requirements, Architectural Review*
