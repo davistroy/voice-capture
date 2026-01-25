@@ -71,9 +71,12 @@ class PageBuilder:
                 }
             },
             "Device": {
-                "select": {
-                    "name": device_display
-                }
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {"content": device_display}
+                    }
+                ]
             },
             "Type": {
                 "select": {

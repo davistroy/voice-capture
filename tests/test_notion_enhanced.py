@@ -627,22 +627,22 @@ class TestDeviceAndTypeProperties:
     def test_create_device_property_watch(self):
         """Test device property for watch."""
         result = create_device_property("watch")
-        assert result == {"select": {"name": "Watch"}}
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Watch"}}]}
 
     def test_create_device_property_phone(self):
         """Test device property for phone."""
         result = create_device_property("phone")
-        assert result == {"select": {"name": "Phone"}}
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Phone"}}]}
 
     def test_create_device_property_unknown(self):
         """Test device property for unknown."""
         result = create_device_property("other")
-        assert result == {"select": {"name": "Unknown"}}
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Unknown"}}]}
 
     def test_create_device_property_uppercase(self):
         """Test device property handles uppercase."""
         result = create_device_property("WATCH")
-        assert result == {"select": {"name": "Watch"}}
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Watch"}}]}
 
     def test_create_type_property(self):
         """Test type property creation."""
@@ -972,7 +972,7 @@ class TestNotionServiceEnhanced:
             assert "Type" in properties
             assert properties["Type"]["select"]["name"] == "Task"
             assert "Device" in properties
-            assert properties["Device"]["select"]["name"] == "Watch"
+            assert properties["Device"]["rich_text"][0]["text"]["content"] == "Watch"
             assert "Tags" in properties
             assert len(properties["Tags"]["multi_select"]) == 3
 
