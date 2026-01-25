@@ -93,6 +93,7 @@ class ProcessingResult:
     capture_id: int
     notion_page_id: Optional[str] = None
     notion_page_url: Optional[str] = None
+    template_name: Optional[str] = None
     error: Optional[str] = None
     stage: Optional[str] = None
     error_category: Optional[str] = None
@@ -287,6 +288,7 @@ class PipelineOrchestrator:
                     capture_id=capture_id,
                     notion_page_id=capture.notion_page_id,
                     notion_page_url=capture.notion_page_url,
+                    template_name=capture.template_name,
                 )
 
             # Unexpected state

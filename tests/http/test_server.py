@@ -701,7 +701,7 @@ class TestStatusEndpoint:
         # Mock capture record
         mock_capture = MagicMock()
         mock_capture.status = "complete"
-        mock_capture.template = "task"
+        mock_capture.template_name = "task"
         mock_capture.notion_page_url = "https://notion.so/page-123"
         mock_db.get_capture_by_id.return_value = mock_capture
 
@@ -735,7 +735,7 @@ class TestStatusEndpoint:
         """Test status with valid API key."""
         mock_capture = MagicMock()
         mock_capture.status = "pending"
-        mock_capture.template = None
+        mock_capture.template_name = None
         mock_capture.notion_page_url = None
         mock_db.get_capture_by_id.return_value = mock_capture
 
