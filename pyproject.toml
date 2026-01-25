@@ -47,7 +47,7 @@ dependencies = [
     "openai>=1.0",
     "anthropic>=0.18",
     "notion-client>=2.0",
-    "python-pushover>=0.4",
+    # Note: python-pushover not used; pushover.py uses aiohttp directly
     # CLI
     "click>=8.0",
     "rich>=13.0",
