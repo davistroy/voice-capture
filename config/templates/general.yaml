@@ -29,11 +29,14 @@ triggers:
 fields:
   - name: title
     type: title
-    description: Auto-generated from first sentence or summary
+    description: Auto-generated from main topic or action
     extraction: |
-      Generate a descriptive title from the first sentence or main topic.
-      Should capture the essence of the capture in 5-12 words.
-      If content is very mixed, use the first clear topic mentioned.
+      Generate a concise, descriptive title (5-10 words).
+      Extract the CORE topic or action, not meta-language.
+      DO NOT include phrases like "Create a task", "Remind me", "Note to self".
+      Example: "Create a task called Get Truck Brakes Fixed" -> "Get Truck Brakes Fixed"
+      Example: "I need to research AI trends" -> "Research AI Trends"
+      Focus on WHAT the capture is about, not HOW it was stated.
     required: true
     notion_property: Title
 
@@ -52,14 +55,10 @@ fields:
     notion_property: Duration
 
   - name: device
-    type: select
+    type: rich_text
     description: Capture device
     extraction: Use capture metadata device
     required: false
-    options:
-      - Watch
-      - Phone
-      - Unknown
     notion_property: Device
 
   - name: summary
@@ -91,6 +90,40 @@ fields:
       - None
     notion_property: Suggested Template
 
+  - name: priority
+    type: select
+    description: Priority level (preserved from original classification)
+    extraction: |
+      Extract priority from explicit mentions and urgency language.
+      - High: "high-priority", "high priority", "urgent", "ASAP", "critical",
+        "important", "time-sensitive", "blocking", "immediately"
+      - Medium: normal priority, moderate urgency, no priority mentioned
+      - Low: "low-priority", "low priority", "when you get a chance", "eventually",
+        "nice to have", "backlog"
+      IMPORTANT: If text contains "high-priority" or "high priority", ALWAYS return "High".
+      Leave empty (null) if no priority language is present.
+    required: false
+    options:
+      - High
+      - Medium
+      - Low
+    notion_property: Priority
+
+  - name: due_date
+    type: date
+    description: Deadline if mentioned (preserved from original classification)
+    extraction: |
+      Extract explicit date/time references and CONVERT them to ISO 8601 format (YYYY-MM-DD).
+      Use the current date from metadata to calculate actual dates:
+      - "tomorrow" -> add 1 day to current date
+      - "next Friday" -> find the next Friday after current date
+      - "next week" -> add 7 days to current date
+      - "end of month" -> last day of current month
+      Leave empty (null) if no deadline is mentioned.
+      IMPORTANT: Output MUST be in YYYY-MM-DD format, NOT relative text.
+    required: false
+    notion_property: Due Date
+
   - name: tags
     type: multi_select
     description: Topic tags for organization
@@ -100,6 +133,15 @@ fields:
       Include any identifiable themes, topics, or contexts.
     required: false
     notion_property: Tags
+
+  - name: transcription
+    type: rich_text
+    description: Full raw transcript text
+    extraction: |
+      Copy the COMPLETE original transcript text exactly as provided.
+      Do not summarize, edit, or modify the text in any way.
+    required: true
+    notion_property: Transcription
 
 notion:
   database_id: ${NOTION_VOICE_CAPTURES_DB_ID}

@@ -120,6 +120,15 @@ fields:
     required: false
     notion_property: Tags
 
+  - name: transcription
+    type: rich_text
+    description: Full raw transcript text
+    extraction: |
+      Copy the COMPLETE original transcript text exactly as provided.
+      Do not summarize, edit, or modify the text in any way.
+    required: true
+    notion_property: Transcription
+
 notion:
   database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
 

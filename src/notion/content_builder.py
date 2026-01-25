@@ -444,17 +444,14 @@ class ContentBuilder:
     def _format_device_name(self, device: str) -> str:
         """Format device name for display.
 
+        Passes through the device name exactly as provided.
+
         Args:
-            device: Device value (lowercase or any case).
+            device: Device value from capture metadata.
 
         Returns:
-            Formatted device name with title case.
+            Device name as-is, or "Unknown" if empty.
         """
-        device_lower = device.lower()
-        if device_lower == "watch":
-            return "Watch"
-        elif device_lower == "phone":
-            return "Phone"
-        else:
-            return "Unknown"
+        stripped = device.strip() if device else ""
+        return stripped if stripped else "Unknown"
 

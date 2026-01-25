@@ -153,9 +153,15 @@ When content could fit multiple templates, use these guidelines:
 
     def _build_metadata_section(self, metadata: TranscriptMetadata) -> str:
         """Build the transcript metadata section."""
+        # Include current date so LLM can resolve relative dates
+        from datetime import datetime
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_weekday = datetime.now().strftime('%A')
+
         return f"""## Transcript Metadata
 
-{metadata.format_for_prompt()}"""
+{metadata.format_for_prompt()}
+- Current date: {current_date} ({current_weekday})"""
 
     def _build_transcript_section(self, transcript: str) -> str:
         """Build the transcript section."""
@@ -191,7 +197,8 @@ Important:
 - The "confidence" must be a decimal between 0.0 and 1.0
 - The "fields" object must include all required fields for the selected template
 - Use null for optional fields that cannot be extracted from the transcript
-- Tags should be lowercase, single words or hyphenated phrases"""
+- Tags should be lowercase, single words or hyphenated phrases
+- CRITICAL: All date fields MUST be in ISO 8601 format (YYYY-MM-DD). Convert relative dates like "tomorrow", "next Friday", "next week" to actual dates using the current date provided in metadata. For example, if today is 2026-01-25 (Saturday) and the transcript says "next Friday", output "2026-01-30"."""
 
 
 def build_corrective_prompt(original_response: str, error_message: str) -> str:

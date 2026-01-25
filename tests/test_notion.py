@@ -110,8 +110,8 @@ class TestPageBuilder:
         # Check Date
         assert props["Date"]["date"]["start"] == captured_at.isoformat()
 
-        # Check Device (should be capitalized)
-        assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
+        # Check Device (passed through exactly as provided)
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "watch"
 
         # Check Type
         assert props["Type"]["select"]["name"] == "General"
@@ -142,29 +142,27 @@ class TestPageBuilder:
         builder = PageBuilder()
         captured_at = datetime(2026, 1, 20, 14, 30, 22)
 
-        # Test watch
+        # Test device values pass through exactly as provided
         props = builder.build_properties(
             title="Test", captured_at=captured_at, device="watch"
         )
-        assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "watch"
 
-        # Test phone
         props = builder.build_properties(
-            title="Test", captured_at=captured_at, device="phone"
+            title="Test", captured_at=captured_at, device="Phone"
         )
         assert props["Device"]["rich_text"][0]["text"]["content"] == "Phone"
 
-        # Test unknown
         props = builder.build_properties(
-            title="Test", captured_at=captured_at, device="unknown"
+            title="Test", captured_at=captured_at, device="iPhone 15 Pro"
         )
-        assert props["Device"]["rich_text"][0]["text"]["content"] == "Unknown"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "iPhone 15 Pro"
 
-        # Test uppercase input
+        # Test uppercase preserved
         props = builder.build_properties(
             title="Test", captured_at=captured_at, device="WATCH"
         )
-        assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
+        assert props["Device"]["rich_text"][0]["text"]["content"] == "WATCH"
 
     def test_build_page_content_structure(self):
         """Test page content has correct structure."""
@@ -204,7 +202,7 @@ class TestPageBuilder:
         assert content[5]["type"] == "paragraph"
         footer_text = content[5]["paragraph"]["rich_text"][0]["text"]["content"]
         assert "2026-01-20" in footer_text
-        assert "Watch" in footer_text
+        assert "watch" in footer_text  # Device passed through exactly
         assert "10.5s" in footer_text
         assert content[5]["paragraph"]["rich_text"][0]["annotations"]["italic"] is True
 
@@ -294,15 +292,18 @@ class TestPageBuilder:
         assert summary == "No transcript content."
 
     def test_format_device_name(self):
-        """Test device name formatting."""
+        """Test device name formatting - passes through exactly as provided."""
         builder = PageBuilder()
 
-        assert builder._format_device_name("watch") == "Watch"
-        assert builder._format_device_name("WATCH") == "Watch"
-        assert builder._format_device_name("phone") == "Phone"
-        assert builder._format_device_name("PHONE") == "Phone"
-        assert builder._format_device_name("unknown") == "Unknown"
-        assert builder._format_device_name("other") == "Unknown"
+        # Device names pass through exactly as-is
+        assert builder._format_device_name("watch") == "watch"
+        assert builder._format_device_name("Phone") == "Phone"
+        assert builder._format_device_name("iPhone 15 Pro") == "iPhone 15 Pro"
+        assert builder._format_device_name("Apple Watch") == "Apple Watch"
+        assert builder._format_device_name("TABLET") == "TABLET"
+        # Empty/whitespace defaults to Unknown
+        assert builder._format_device_name("") == "Unknown"
+        assert builder._format_device_name("  ") == "Unknown"
 
 
 # ============================================================================
@@ -665,7 +666,7 @@ class TestNotionIntegration:
             # Check properties
             props = call_kwargs["properties"]
             assert props["Type"]["select"]["name"] == "General"
-            assert props["Device"]["rich_text"][0]["text"]["content"] == "Watch"
+            assert props["Device"]["rich_text"][0]["text"]["content"] == "watch"
             assert len(props["Tags"]["multi_select"]) == 0
 
             # Check content blocks
