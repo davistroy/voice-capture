@@ -383,7 +383,7 @@ class HttpUploadServer:
                     return success_response(
                         capture_id=capture_id,
                         status="complete",
-                        template=result.template,
+                        template=result.template_name,
                         notion_url=result.notion_page_url,
                         processing_time_ms=processing_time_ms,
                     )
@@ -453,6 +453,6 @@ class HttpUploadServer:
         return success_response(
             capture_id=capture_id,
             status=capture.status,
-            template=capture.template,
+            template=capture.template_name,
             notion_url=capture.notion_page_url,
         )
