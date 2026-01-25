@@ -267,8 +267,12 @@ class HttpUploadServer:
         Receives audio file upload, validates it, saves to processing directory,
         inserts into database, and optionally waits for processing.
 
+        Supports multiple content types for iOS Shortcuts compatibility:
+        - multipart/form-data: Standard form upload with 'audio' and 'device' fields
+        - application/octet-stream or other: Raw file upload with device in query param
+
         Args:
-            request: The incoming request with multipart form data.
+            request: The incoming request with audio data.
 
         Returns:
             JSON response with capture status or error.
@@ -279,28 +283,58 @@ class HttpUploadServer:
 
         # Parse query parameters
         wait_for_result = request.query.get("wait", "true").lower() in ("true", "1", "yes")
+        device_from_query = request.query.get("device", "").strip().lower()
 
-        # Parse multipart form data
-        try:
-            reader = await request.multipart()
-        except Exception as e:
-            logger.warning("Failed to parse multipart data: %s", e)
-            return error_response(
-                ErrorCode.INVALID_REQUEST,
-                "Request must be multipart/form-data",
-            )
-
-        # Extract audio file and device
+        # Extract audio file and device based on content type
         audio_data: Optional[bytes] = None
         audio_filename: Optional[str] = None
-        device_str = "http"
+        device_str = device_from_query or "http"
 
-        async for field in reader:
-            if field.name == "audio":
-                audio_filename = field.filename or "recording.m4a"
-                audio_data = await field.read()
-            elif field.name == "device":
-                device_str = (await field.read()).decode("utf-8").strip().lower()
+        content_type = request.content_type or ""
+
+        if content_type.startswith("multipart/form-data"):
+            # Standard multipart form upload
+            try:
+                reader = await request.multipart()
+            except Exception as e:
+                logger.warning("Failed to parse multipart data: %s", e)
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "Invalid multipart/form-data request",
+                )
+
+            async for field in reader:
+                if field.name == "audio":
+                    audio_filename = field.filename or "recording.m4a"
+                    audio_data = await field.read()
+                elif field.name == "device":
+                    device_str = (await field.read()).decode("utf-8").strip().lower() or device_str
+        else:
+            # Raw file upload (for iOS Shortcuts "File" body type)
+            # The entire body is the audio file
+            try:
+                audio_data = await request.read()
+                # Try to get filename from Content-Disposition header
+                content_disp = request.headers.get("Content-Disposition", "")
+                if "filename=" in content_disp:
+                    # Extract filename from header
+                    import re
+                    match = re.search(r'filename="?([^";\s]+)"?', content_disp)
+                    if match:
+                        audio_filename = match.group(1)
+                if not audio_filename:
+                    audio_filename = "recording.m4a"
+                logger.info(
+                    "Received raw file upload: content_type=%s, size=%d bytes",
+                    content_type,
+                    len(audio_data) if audio_data else 0,
+                )
+            except Exception as e:
+                logger.warning("Failed to read request body: %s", e)
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "Failed to read audio data from request body",
+                )
 
         if audio_data is None:
             return error_response(

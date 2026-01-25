@@ -1426,7 +1426,32 @@ Add these actions in order:
 1. Tap **Done** in the top-right corner
 2. Your shortcut is now saved
 
-### 12.3 Complete Shortcut Overview
+### 12.3 Alternative: Simplified Shortcut (Recommended)
+
+If you're having trouble with the Form body type (common iOS Shortcuts issue), use this simpler approach that sends the audio file directly:
+
+#### Simplified Shortcut Setup
+
+**Action 1: Record Audio**
+- Same as before: Quality Very High, On Tap
+
+**Action 2: Get Contents of URL**
+- **URL:** `http://YOUR-SERVER:8080/api/v1/capture?wait=true&device=phone`
+  - Note: `device=phone` is now in the URL, not the form body
+- **Method:** POST
+- **Headers:** Add header (if using API key)
+  - **Key:** `X-API-Key`
+  - **Value:** Your API key
+- **Request Body:** Select **"File"** (not Form!)
+- **File:** Select **"Recorded Audio"** variable
+
+That's it for the minimal version! The server now accepts raw file uploads.
+
+#### Add Notifications (Optional)
+
+Add the same If/Otherwise logic from Step 3 Actions 3-9 if you want success/failure notifications.
+
+### 12.4 Complete Shortcut Overview (Form Method)
 
 ```
 ┌─────────────────────────────────────┐
@@ -1451,7 +1476,23 @@ Add these actions in order:
 └─────────────────────────────────────┘
 ```
 
-### 12.4 Apple Watch Integration
+### 12.5 Simplified Shortcut Overview (File Method - Recommended)
+
+```
+┌─────────────────────────────────────┐
+│ 1. Record Audio                     │
+│    Quality: Very High               │
+├─────────────────────────────────────┤
+│ 2. Get Contents of URL              │
+│    POST http://server:8080/api/v1/  │
+│         capture?wait=true&device=   │
+│         phone                       │
+│    Headers: X-API-Key (if needed)   │
+│    Body: File = [Recorded Audio]    │
+└─────────────────────────────────────┘
+```
+
+### 12.6 Apple Watch Integration
 
 The shortcut works from Apple Watch:
 
@@ -1462,7 +1503,7 @@ The shortcut works from Apple Watch:
 
 **Note:** HTTP uploads require the iPhone to be reachable (Watch uses iPhone for network and recording). For truly standalone Watch capture without iPhone, use the Google Drive shortcut from Part 4 instead.
 
-### 12.5 Troubleshooting HTTP Shortcuts
+### 12.7 Troubleshooting HTTP Shortcuts
 
 | Problem | Solution |
 |---------|----------|
