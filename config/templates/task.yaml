@@ -36,6 +36,12 @@ triggers:
     - "send"
     - "call"
     - "email"
+    - "this is a task"
+    - "high-priority task"
+    - "high priority task"
+    - "I have a task"
+    - "priority task"
+    - "urgent task"
 
   indicators:
     - imperative statements

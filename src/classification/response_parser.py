@@ -436,6 +436,9 @@ def create_fallback_result(
     """
     Create a fallback classification result when classification fails entirely.
 
+    Attempts to extract useful fields from the transcript text even without
+    LLM classification, including priority, due dates, and a cleaned title.
+
     Args:
         transcript: The original transcript text.
         reason: Reason for the fallback.
@@ -443,21 +446,159 @@ def create_fallback_result(
     Returns:
         ClassificationResult with general template and zero confidence.
     """
-    # Generate title from first sentence
-    first_sentence = transcript.split('.')[0].strip()
+    # Generate cleaned title
+    title = _generate_fallback_title(transcript)
+
+    # Generate basic summary
+    summary = transcript[:500] if len(transcript) > 500 else transcript
+
+    # Build fields with whatever we can extract
+    fields = {
+        "summary": summary,
+        "transcription": transcript,
+    }
+
+    # Extract priority from transcript text
+    priority = _extract_priority_from_text(transcript)
+    if priority:
+        fields["priority"] = priority
+
+    # Extract tags
+    tags = _extract_fallback_tags(transcript)
+
+    return ClassificationResult(
+        template_name="general",
+        confidence=0.0,
+        fields=fields,
+        title=title,
+        tags=tags,
+        reasoning=f"Fallback classification: {reason}",
+    )
+
+
+def _generate_fallback_title(transcript: str) -> str:
+    """
+    Generate a cleaned title from transcript text.
+
+    Strips common meta-language prefixes and extracts the core content.
+
+    Args:
+        transcript: The transcript text.
+
+    Returns:
+        Cleaned title string.
+    """
+    if not transcript or not transcript.strip():
+        return "Untitled capture"
+
+    text = transcript.strip()
+
+    # Try to find the core content by stripping meta-language prefixes
+    # These patterns match common voice capture preambles
+    meta_prefixes = [
+        r"^this is a (?:high[- ]priority |low[- ]priority |urgent )?task\.?\s*",
+        r"^this is an? (?:idea|thought|note|observation)\.?\s*",
+        r"^(?:I need to|I have to|I've got to|I gotta)\s+",
+        r"^(?:remind me to|don't forget to|remember to|make sure to)\s+",
+        r"^(?:note to self|create a task|add a task|new task)\s*:?\s*",
+    ]
+
+    cleaned = text
+    for pattern in meta_prefixes:
+        new_text = re.sub(pattern, "", cleaned, count=1, flags=re.IGNORECASE)
+        if new_text != cleaned:
+            cleaned = new_text.strip()
+
+    # Use the cleaned text or fall back to original
+    if not cleaned:
+        cleaned = text
+
+    # Get first sentence from the cleaned text
+    first_sentence = cleaned.split('.')[0].strip()
+    if not first_sentence:
+        first_sentence = cleaned[:60].strip()
+
+    # Strip trailing deadline info for a cleaner title
+    deadline_patterns = [
+        r"\s+by\s+(?:this\s+)?(?:coming\s+)?(?:next\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday).*$",
+        r"\s+by\s+(?:tomorrow|tonight|end of (?:day|week|month)).*$",
+        r"\s+(?:before|until|due)\s+.*$",
+    ]
+    for pattern in deadline_patterns:
+        first_sentence = re.sub(pattern, "", first_sentence, flags=re.IGNORECASE).strip()
+
+    # Capitalize first letter
+    if first_sentence and first_sentence[0].islower():
+        first_sentence = first_sentence[0].upper() + first_sentence[1:]
+
+    # Truncate if too long
     if len(first_sentence) > 60:
         title = first_sentence[:57] + "..."
     else:
         title = first_sentence or "Untitled capture"
 
-    # Generate basic summary
-    summary = transcript[:500] if len(transcript) > 500 else transcript
+    return title
 
-    return ClassificationResult(
-        template_name="general",
-        confidence=0.0,
-        fields={"summary": summary},
-        title=title,
-        tags=[],
-        reasoning=f"Fallback classification: {reason}",
-    )
+
+def _extract_priority_from_text(transcript: str) -> Optional[str]:
+    """
+    Extract priority level from transcript text using keyword matching.
+
+    Args:
+        transcript: The transcript text.
+
+    Returns:
+        Priority string ("High", "Medium", "Low") or None if not detected.
+    """
+    text_lower = transcript.lower()
+
+    high_keywords = [
+        "high-priority", "high priority", "urgent", "asap",
+        "critical", "important", "time-sensitive", "blocking",
+        "immediately", "right away",
+    ]
+    low_keywords = [
+        "low-priority", "low priority", "when you get a chance",
+        "eventually", "nice to have", "backlog", "someday",
+    ]
+
+    for keyword in high_keywords:
+        if keyword in text_lower:
+            return "High"
+
+    for keyword in low_keywords:
+        if keyword in text_lower:
+            return "Low"
+
+    return None
+
+
+def _extract_fallback_tags(transcript: str) -> List[str]:
+    """
+    Extract basic tags from transcript text.
+
+    Args:
+        transcript: The transcript text.
+
+    Returns:
+        List of tag strings.
+    """
+    text_lower = transcript.lower()
+    tags = []
+
+    # Check for common categories
+    tag_keywords = {
+        "personal": ["my", "i need", "i have to", "my car", "my truck"],
+        "work": ["meeting", "client", "project", "deadline", "report"],
+        "maintenance": ["fix", "repair", "replace", "broken", "brakes", "mechanic"],
+        "urgent": ["urgent", "asap", "immediately", "right away", "critical"],
+        "health": ["doctor", "appointment", "medication", "exercise", "gym"],
+    }
+
+    for tag, keywords in tag_keywords.items():
+        for keyword in keywords:
+            if keyword in text_lower:
+                tags.append(tag)
+                break
+
+    return tags[:5]

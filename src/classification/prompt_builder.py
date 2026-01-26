@@ -132,23 +132,29 @@ class PromptBuilder:
    - Reflections, feelings, mood -> use "journal" template
    - "idea", brainstorming, "what if" -> use "idea" template
 
-2. Confidence should reflect how well the transcript fits the template:
-   - 0.9-1.0: Perfect match, explicit template indicators present
+2. **EXPLICIT TYPE DECLARATIONS** — If the transcript explicitly names its type, ALWAYS use that template with high confidence:
+   - "This is a task", "high-priority task", "I have a task" -> "task" template, confidence 0.95+
+   - "This is an idea", "here's an idea", "I had an idea" -> "idea" template, confidence 0.95+
+   - "I want to research", "need to look into" -> "research" template, confidence 0.9+
+   - ANY mention of "task" combined with action items, deadlines, or priority -> "task" template, confidence 0.9+
+
+3. Confidence should reflect how well the transcript fits the template:
+   - 0.9-1.0: Perfect match, explicit template indicators present (e.g., user says "this is a task")
    - 0.7-0.9: Good match, content clearly fits the template
    - 0.5-0.7: Partial match, some content fits but ambiguous
    - Below 0.5: Poor match, content doesn't fit this template
 
-3. If no template fits with confidence >= {self.confidence_threshold}, use "general"
+4. If no template fits with confidence >= {self.confidence_threshold}, use "general"
 
-4. IMPORTANT: Extract ALL fields defined for the selected template:
+5. IMPORTANT: Extract ALL fields defined for the selected template:
    - Read the "Extraction guidance" for each field
    - For priority: detect words like "high priority", "urgent", "ASAP" -> "High"
    - For due_date: convert relative dates ("next Friday") to YYYY-MM-DD format
    - For transcription: copy the COMPLETE original transcript text
 
-5. Generate a clean title WITHOUT meta-language (no "Create a task", "Remind me to")
+6. Generate a clean title WITHOUT meta-language (no "Create a task", "Remind me to", "This is a")
 
-6. Generate 2-5 relevant lowercase topic tags"""
+7. Generate 2-5 relevant lowercase topic tags"""
 
     def _build_overlap_section(self) -> str:
         """Build the overlap handling section."""
@@ -207,31 +213,37 @@ Respond with valid JSON only. Do not include any text before or after the JSON o
 CRITICAL INSTRUCTIONS:
 
 1. **Title extraction**: The "title" MUST be a clean, concise summary of the CORE content.
-   - STRIP all meta-language like "Create a task", "Remind me to", "Note to self", "I need to"
+   - STRIP all meta-language: "Create a task", "Remind me to", "Note to self", "I need to",
+     "This is a", "This is a high-priority task", "I have a task to", etc.
    - STRIP priority and deadline info from the title (those go in separate fields)
+   - Extract ONLY the actionable content as the title
+   - Example: "This is a high-priority task. I need to get my truck brakes fixed by this coming Friday" -> "Get truck brakes fixed"
    - Example: "Create a high-priority task to get my truck brakes fixed" -> "Get truck brakes fixed"
    - Example: "Remind me to call John tomorrow" -> "Call John"
-   - The title should describe WHAT, not HOW it was captured
+   - The title should describe WHAT, not HOW it was captured or what priority it has
 
 2. **Field extraction**: You MUST extract ALL fields defined for the selected template.
    - Follow the "Extraction guidance" provided for each field
    - For select fields, use ONLY the allowed options listed
    - For date fields, convert relative dates to ISO 8601 format (YYYY-MM-DD) using the current date
+   - Example: If today is 2026-01-25 (Saturday) and transcript says "this coming Friday", use "2026-01-30"
    - Example: If today is 2026-01-25 (Saturday) and transcript says "next Friday", use "2026-01-30"
 
-3. **Priority extraction**: If the transcript contains "high priority", "urgent", "ASAP", "important" -> set priority to "High"
+3. **Priority extraction**: If the transcript contains "high priority", "high-priority", "urgent", "ASAP", "important" -> set priority to "High"
 
 4. **Template selection**: Choose the template that best matches the content TYPE:
-   - "task" for action items, to-dos, reminders (look for "need to", "have to", "remind me", deadlines)
+   - "task" for action items, to-dos, reminders (look for "need to", "have to", "remind me", deadlines, "task")
    - "journal" for reflections, feelings, daily observations
    - "idea" for brainstorming, speculative concepts
    - "research" for learning goals, topics to explore
    - "product" for features, bugs, product feedback
-   - "general" only if truly ambiguous
+   - "general" ONLY if content is truly ambiguous and does not match any other template
+   - IMPORTANT: If the user explicitly says "this is a task" or "high-priority task", ALWAYS use "task" template
 
 5. **Required fields**: The "fields" object MUST include all fields marked [REQUIRED] for the selected template.
 
-6. **Confidence**: Set to 0.9+ if content clearly matches the template type."""
+6. **Confidence**: Set to 0.95+ when the user explicitly names the content type (e.g., "this is a task").
+   Set to 0.9+ if content clearly matches the template type with strong indicators."""
 
 
 def build_corrective_prompt(original_response: str, error_message: str) -> str:
