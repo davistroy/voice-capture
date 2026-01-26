@@ -69,7 +69,6 @@ fields:
       Answer: What is the core concept? What would it do or achieve?
       Write as if explaining to someone unfamiliar with the context.
     required: true
-    notion_property: Core Concept
 
   - name: elaboration
     type: rich_text
@@ -80,7 +79,6 @@ fields:
       related ideas or inspirations, initial concerns or challenges.
       Preserve the exploratory tone of the original capture.
     required: false
-    notion_property: Elaboration
 
   - name: potential_value
     type: select
@@ -99,7 +97,6 @@ fields:
       - Medium
       - Low
       - Unknown
-    notion_property: Potential Value
 
   - name: next_steps
     type: rich_text
@@ -110,7 +107,6 @@ fields:
       validation steps, related resources to check.
       Leave empty if no next steps are mentioned.
     required: false
-    notion_property: Next Steps
 
   - name: tags
     type: multi_select

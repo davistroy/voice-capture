@@ -73,11 +73,11 @@ fields:
     required: false
     default: Neutral
     options:
-      - Energized
-      - Focused
-      - Neutral
-      - Tired
-      - Frustrated
+      - Great
+      - Good
+      - Okay
+      - Difficult
+      - Rough
     notion_property: Mood
 
   - name: summary
@@ -88,7 +88,6 @@ fields:
       Focus on the key events, emotions, or realizations.
       Write in third-person perspective for clarity.
     required: true
-    notion_property: Summary
 
   - name: full_entry
     type: rich_text
@@ -98,7 +97,6 @@ fields:
       Add paragraph breaks where natural pauses occur.
       Keep the first-person voice and authentic expression intact.
     required: false
-    notion_property: Full Entry
 
   - name: people_mentioned
     type: multi_select
@@ -108,7 +106,6 @@ fields:
       Include first names, full names, or roles if names aren't given (e.g., "my manager").
       Leave empty if no people are mentioned.
     required: false
-    notion_property: People Mentioned
 
   - name: tags
     type: multi_select

@@ -70,9 +70,8 @@ fields:
       If not explicitly mentioned, infer from context if possible.
       Leave generic like "Current project" if unclear.
     required: false
-    notion_property: Product/Project
 
-  - name: type
+  - name: item_type
     type: select
     description: Type of product item
     extraction: |
@@ -91,7 +90,6 @@ fields:
       - Enhancement
       - UX
       - Technical Debt
-    notion_property: Type
 
   - name: description
     type: rich_text
@@ -102,7 +100,6 @@ fields:
       For bugs: what's happening, expected vs actual behavior
       For enhancements: what should improve, current state vs desired
     required: true
-    notion_property: Description
 
   - name: user_impact
     type: rich_text
@@ -113,7 +110,6 @@ fields:
       frequency of the issue, potential benefit of addressing it.
       Leave empty if not mentioned.
     required: false
-    notion_property: User Impact
 
   - name: implementation_notes
     type: rich_text
@@ -124,7 +120,6 @@ fields:
       related code areas, technical constraints.
       Leave empty if no technical details mentioned.
     required: false
-    notion_property: Implementation Notes
 
   - name: priority
     type: select

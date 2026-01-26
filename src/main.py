@@ -18,6 +18,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
+from src.classification.classification import ClassificationService
+from src.classification.template_loader import TemplateLoader
 from src.config.settings import get_settings, Settings
 from src.db.database import Database
 from src.http.server import HttpUploadServer
@@ -157,6 +159,13 @@ class VoiceCaptureApp:
         logger.info("Notion service initialized: database=%s",
                     self.settings.notion_voice_captures_db_id[:8] + "...")
 
+        # Initialize classification service (Phase 2)
+        classification = ClassificationService.from_settings(self.settings)
+        template_loader = classification.template_loader
+        logger.info("Classification service initialized: model=%s, templates=%d",
+                    classification.config.model,
+                    len(template_loader.templates))
+
         # Initialize pipeline orchestrator
         retry_config = RetryConfig(
             max_retries=self.settings.pipeline.max_retries,
@@ -170,7 +179,8 @@ class VoiceCaptureApp:
             notion=self._notion,
             retry_config=retry_config,
             failed_path=self.settings.paths.failed,
-            classification=None,  # Phase 1: no classification
+            classification=classification,
+            template_loader=template_loader,
         )
         logger.info("Pipeline orchestrator initialized")
 

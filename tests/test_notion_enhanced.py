@@ -583,12 +583,13 @@ class TestPropertyMapper:
         fields = {"title": "My Task"}  # Only title provided
 
         field_configs = [
-            FieldConfig(name="title", type=FieldType.TITLE, required=True),
+            FieldConfig(name="title", type=FieldType.TITLE, required=True, notion_property="Title"),
             FieldConfig(
                 name="priority",
                 type=FieldType.SELECT,
                 default="Medium",
                 options=["High", "Medium", "Low"],
+                notion_property="Priority",
             ),
         ]
 
@@ -598,8 +599,8 @@ class TestPropertyMapper:
             apply_defaults=True,
         )
 
-        assert "priority" in properties
-        assert properties["priority"]["select"]["name"] == "Medium"
+        assert "Priority" in properties
+        assert properties["Priority"]["select"]["name"] == "Medium"
 
     def test_map_fields_skips_none_values(self):
         """Test that None values are skipped."""
@@ -608,8 +609,8 @@ class TestPropertyMapper:
         fields = {"title": "My Task", "context": None}
 
         field_configs = [
-            FieldConfig(name="title", type=FieldType.TITLE, required=True),
-            FieldConfig(name="context", type=FieldType.RICH_TEXT, required=False),
+            FieldConfig(name="title", type=FieldType.TITLE, required=True, notion_property="Title"),
+            FieldConfig(name="context", type=FieldType.RICH_TEXT, required=False, notion_property="Context"),
         ]
 
         properties = mapper.map_fields_to_properties(
@@ -617,8 +618,28 @@ class TestPropertyMapper:
             field_configs=field_configs,
         )
 
-        assert "title" in properties
-        assert "context" not in properties
+        assert "Title" in properties
+        assert "Context" not in properties
+
+    def test_map_fields_skips_extraction_only(self):
+        """Test that fields without notion_property are skipped."""
+        mapper = PropertyMapper()
+
+        fields = {"title": "My Task", "summary": "A summary"}
+
+        field_configs = [
+            FieldConfig(name="title", type=FieldType.TITLE, required=True, notion_property="Title"),
+            FieldConfig(name="summary", type=FieldType.RICH_TEXT, required=True),
+            # summary has no notion_property -> extraction-only
+        ]
+
+        properties = mapper.map_fields_to_properties(
+            fields=fields,
+            field_configs=field_configs,
+        )
+
+        assert "Title" in properties
+        assert "summary" not in properties
 
 
 class TestDeviceAndTypeProperties:

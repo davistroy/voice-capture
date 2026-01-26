@@ -320,7 +320,7 @@ class NotionService:
         # Find title field config to get the correct property name
         title_property_name = "Title"
         for field_config in template.fields:
-            if field_config.type.value == "title":
+            if field_config.type.value == "title" and field_config.get_notion_property_name():
                 title_property_name = field_config.get_notion_property_name()
                 break
         properties[title_property_name] = {
@@ -346,8 +346,9 @@ class NotionService:
             # Find date field config to get the correct property name
             date_property_name = "Date"
             for field_config in template.fields:
-                if field_config.type.value == "date" and "created" in field_config.name.lower():
-                    date_property_name = field_config.get_notion_property_name()
+                prop_name = field_config.get_notion_property_name()
+                if field_config.type.value == "date" and prop_name and "created" in field_config.name.lower():
+                    date_property_name = prop_name
                     break
             properties[date_property_name] = {
                 "date": {"start": metadata.captured_at.isoformat()}

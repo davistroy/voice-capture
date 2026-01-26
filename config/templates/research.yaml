@@ -69,7 +69,6 @@ fields:
       If multiple questions, identify the main one.
       Frame as a clear question or specific area of inquiry.
     required: true
-    notion_property: Question/Topic
 
   - name: why_it_matters
     type: rich_text
@@ -80,7 +79,6 @@ fields:
       how it connects to current work or interests.
       Leave empty if motivation is unclear.
     required: false
-    notion_property: Why It Matters
 
   - name: initial_thoughts
     type: rich_text
@@ -91,7 +89,6 @@ fields:
       things that might be relevant.
       Leave empty if none mentioned.
     required: false
-    notion_property: Initial Thoughts
 
   - name: sources_to_check
     type: rich_text
@@ -101,7 +98,6 @@ fields:
       Include: websites, books, people, communities, tools, documentation.
       Leave empty if no sources mentioned.
     required: false
-    notion_property: Sources to Check
 
   - name: status
     type: select
@@ -110,11 +106,11 @@ fields:
       Always set to "To Research" for new items.
       Status will be updated manually as research progresses.
     required: false
-    default: To Research
+    default: Not Started
     options:
-      - To Research
+      - Not Started
       - In Progress
-      - Explored
+      - Complete
     notion_property: Status
 
   - name: tags

@@ -117,9 +117,8 @@ class FieldConfig:
             if not isinstance(self.options, list):
                 raise ValueError(f"Field '{self.name}': options must be a list for select types")
 
-        # Set notion_property to name if not specified
-        if self.notion_property is None:
-            self.notion_property = self.name
+        # notion_property left as None means this field is extraction-only
+        # (available in page body template but not mapped to a Notion DB column)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FieldConfig":
@@ -151,14 +150,14 @@ class FieldConfig:
             notion_property=data.get("notion_property"),
         )
 
-    def get_notion_property_name(self) -> str:
+    def get_notion_property_name(self) -> Optional[str]:
         """
         Get the Notion property name for this field.
 
         Returns:
-            The notion_property if set, otherwise the field name.
+            The notion_property if set, None if this field is extraction-only.
         """
-        return self.notion_property or self.name
+        return self.notion_property
 
 
 def interpolate_env_vars(value: str) -> str:

@@ -52,7 +52,6 @@ fields:
     description: Recording length in seconds
     extraction: Use capture metadata duration
     required: false
-    notion_property: Duration
 
   - name: device
     type: rich_text
@@ -69,7 +68,6 @@ fields:
       Cover the main points or themes mentioned.
       Be objective and informative.
     required: true
-    notion_property: Summary
 
   - name: suggested_template
     type: select
@@ -88,7 +86,6 @@ fields:
       - Research
       - Product
       - None
-    notion_property: Suggested Template
 
   - name: priority
     type: select

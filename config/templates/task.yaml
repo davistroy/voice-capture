@@ -65,14 +65,14 @@ fields:
       Example: "Create a high-priority task called Get Truck Brakes Fixed due Friday"
         -> Title should be: "Get Truck Brakes Fixed" (NOT the whole sentence)
     required: true
-    notion_property: Task
+    notion_property: Title
 
   - name: date_created
     type: date
     description: When this task was captured
     extraction: Use capture metadata timestamp
     required: true
-    notion_property: Date Created
+    notion_property: Date
 
   - name: due_date
     type: date
@@ -119,7 +119,6 @@ fields:
       any dependencies or prerequisites, relevant background.
       Leave empty if none present.
     required: false
-    notion_property: Context
 
   - name: status
     type: select

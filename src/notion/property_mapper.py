@@ -100,6 +100,10 @@ class PropertyMapper:
             field_name = field_config.name
             notion_property_name = field_config.get_notion_property_name()
 
+            # Skip extraction-only fields (no notion_property mapping)
+            if notion_property_name is None:
+                continue
+
             # Get value from extracted fields or use default
             if field_name in fields:
                 value = fields[field_name]

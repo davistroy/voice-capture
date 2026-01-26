@@ -239,7 +239,7 @@ class TestFieldConfig:
         assert field.required is False
         assert field.default is None
         assert field.options == []
-        assert field.notion_property == "title"  # Defaults to name
+        assert field.notion_property is None  # No default when not specified
 
     def test_create_full(self, sample_field_data: Dict[str, Any]):
         """Create field with all values."""
@@ -276,10 +276,10 @@ class TestFieldConfig:
         )
         assert field.options == ["Open", "Closed"]
 
-    def test_notion_property_defaults_to_name(self):
-        """notion_property should default to field name."""
+    def test_notion_property_none_when_not_set(self):
+        """notion_property should be None when not specified (extraction-only)."""
         field = FieldConfig(name="my_field", type=FieldType.RICH_TEXT)
-        assert field.get_notion_property_name() == "my_field"
+        assert field.get_notion_property_name() is None
 
     def test_notion_property_override(self):
         """notion_property can be overridden."""
