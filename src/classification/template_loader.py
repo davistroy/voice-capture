@@ -290,7 +290,7 @@ class TemplateLoader:
                 DeprecationWarning,
                 stacklevel=2,
             )
-        return self._templates.get(name)
+        return self._templates.get(name) or self._templates.get(name.lower())
 
     def get_enabled_templates(self) -> List[TemplateConfig]:
         """

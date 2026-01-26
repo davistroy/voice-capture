@@ -267,6 +267,9 @@ class ResponseParser:
             )
             parsed.template = self.fallback_template
             template_name = self.fallback_template
+        else:
+            # Normalize to lowercase for consistent lookup downstream
+            parsed.template = template_name
 
         # Validate title is not empty
         if not parsed.title.strip():
