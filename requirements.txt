@@ -30,6 +30,9 @@ rich>=13.0
 # Template rendering
 jinja2>=3.0
 
+# Document generation
+python-docx>=1.0
+
 # Testing (optional - install with: pip install -r requirements-dev.txt)
 # pytest>=8.0
 # pytest-asyncio>=0.23
