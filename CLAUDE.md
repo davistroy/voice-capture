@@ -37,7 +37,7 @@ Five-layer pipeline running on a home server:
 
 ## Templates
 
-Six content types, each with specific Notion properties (see `docs/prd.md` Section 7):
+Seven content types, each with specific Notion properties (see `docs/prd.md` Section 7):
 1. **Journal** — Personal reflections, daily observations, meeting reflections, mood tracking
 2. **Task** — Action items, to-dos, reminders, commitments
 3. **Idea** — Brain dumps, speculative concepts, creative possibilities
@@ -54,7 +54,7 @@ Six content types, each with specific Notion properties (see `docs/prd.md` Secti
 
 All four phases implemented:
 1. **Phase 1 (MVP)**: Core pipeline — watcher, transcription, Notion integration, orchestrator
-2. **Phase 2**: Classification — Claude Sonnet, 6 YAML templates, dynamic property mapping
+2. **Phase 2**: Classification — Claude Sonnet, 7 YAML templates, dynamic property mapping
 3. **Phase 3**: Reliability — Pushover notifications, health checks, retry hardening, recovery CLI
 4. **Phase 4**: Synthesis — Weekly summary generation via Claude skill
 
@@ -102,7 +102,7 @@ voice-capture/
 │   ├── interfaces/         # Abstract interfaces for services
 │   └── main.py             # Application entry point
 ├── config/
-│   ├── templates/          # Template definitions (6 YAML files)
+│   ├── templates/          # Template definitions (7 YAML files)
 │   ├── settings.yaml       # Application configuration
 │   └── classification.yaml # Classification settings
 ├── skills/
