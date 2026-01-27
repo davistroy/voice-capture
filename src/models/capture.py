@@ -98,15 +98,24 @@ class Device(Enum):
         """
         Create device from string value.
 
+        Handles iOS Shortcut device type values (e.g., "iPhone" -> phone,
+        "Apple Watch" -> watch).
+
         Args:
-            value: String representation (e.g., "watch", "phone").
+            value: String representation (e.g., "watch", "phone", "iPhone").
 
         Returns:
             Matching Device enum, or UNKNOWN if no match.
         """
-        value_lower = value.lower()
+        aliases = {
+            "iphone": "phone",
+            "apple watch": "watch",
+            "applewatch": "watch",
+        }
+        value_lower = value.lower().strip()
+        resolved = aliases.get(value_lower, value_lower)
         for device in cls:
-            if device.value == value_lower:
+            if device.value == resolved:
                 return device
         return cls.UNKNOWN
 
