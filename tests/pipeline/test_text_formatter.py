@@ -95,37 +95,28 @@ class TestGenerateTitle:
 
 
 class TestFormatDeviceName:
-    """Tests for TextFormatter.format_device_name method."""
+    """Tests for TextFormatter.format_device_name method.
 
-    def test_format_device_watch_lowercase(self):
-        """Verify 'watch' is formatted as 'Watch'."""
-        assert TextFormatter.format_device_name("watch") == "Watch"
+    Device passthrough: raw device strings are returned as-is.
+    Only None/empty values fall back to 'Unknown'.
+    """
 
-    def test_format_device_watch_uppercase(self):
-        """Verify 'WATCH' is formatted as 'Watch'."""
-        assert TextFormatter.format_device_name("WATCH") == "Watch"
+    def test_format_device_passthrough_lowercase(self):
+        """Verify lowercase device strings are returned as-is."""
+        assert TextFormatter.format_device_name("watch") == "watch"
+        assert TextFormatter.format_device_name("phone") == "phone"
 
-    def test_format_device_watch_mixed_case(self):
-        """Verify 'WaTcH' is formatted as 'Watch'."""
-        assert TextFormatter.format_device_name("WaTcH") == "Watch"
+    def test_format_device_passthrough_preserves_case(self):
+        """Verify original casing is preserved."""
+        assert TextFormatter.format_device_name("Apple Watch") == "Apple Watch"
+        assert TextFormatter.format_device_name("iPhone") == "iPhone"
+        assert TextFormatter.format_device_name("WATCH") == "WATCH"
 
-    def test_format_device_phone_lowercase(self):
-        """Verify 'phone' is formatted as 'Phone'."""
-        assert TextFormatter.format_device_name("phone") == "Phone"
-
-    def test_format_device_phone_uppercase(self):
-        """Verify 'PHONE' is formatted as 'Phone'."""
-        assert TextFormatter.format_device_name("PHONE") == "Phone"
-
-    def test_format_device_phone_mixed_case(self):
-        """Verify 'PhOnE' is formatted as 'Phone'."""
-        assert TextFormatter.format_device_name("PhOnE") == "Phone"
-
-    def test_format_device_unknown_device(self):
-        """Verify unknown devices default to 'Unknown'."""
-        assert TextFormatter.format_device_name("tablet") == "Unknown"
-        assert TextFormatter.format_device_name("ipad") == "Unknown"
-        assert TextFormatter.format_device_name("mac") == "Unknown"
+    def test_format_device_passthrough_arbitrary(self):
+        """Verify arbitrary device strings are passed through."""
+        assert TextFormatter.format_device_name("tablet") == "tablet"
+        assert TextFormatter.format_device_name("ipad") == "ipad"
+        assert TextFormatter.format_device_name("mac") == "mac"
 
     def test_format_device_none(self):
         """Verify None returns 'Unknown'."""

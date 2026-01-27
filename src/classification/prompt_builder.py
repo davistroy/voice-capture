@@ -131,11 +131,13 @@ class PromptBuilder:
    - "task", "to-do", "remind me", "need to", deadlines -> use "task" template
    - Reflections, feelings, mood -> use "journal" template
    - "idea", brainstorming, "what if" -> use "idea" template
+   - "feedback on", "feedback for", "performance note" -> use "feedback" template
 
 2. **EXPLICIT TYPE DECLARATIONS** — If the transcript explicitly names its type, ALWAYS use that template with high confidence:
    - "This is a task", "high-priority task", "I have a task" -> "task" template, confidence 0.95+
    - "This is an idea", "here's an idea", "I had an idea" -> "idea" template, confidence 0.95+
    - "I want to research", "need to look into" -> "research" template, confidence 0.9+
+   - "This is feedback", "feedback on [name]", "performance note on [name]" -> "feedback" template, confidence 0.95+
    - ANY mention of "task" combined with action items, deadlines, or priority -> "task" template, confidence 0.9+
 
 3. Confidence should reflect how well the transcript fits the template:
@@ -167,7 +169,9 @@ When content could fit multiple templates, use these guidelines:
 - **Learning while building**: If about the product, use Product; if broader learning, use Research
 - **Ideas with tasks**: If there's a clear action item, use Task; if speculative, use Idea
 - **Questions about topics**: If about specific learning goals, use Research; if about product features, use Product
-- **General observations with feelings**: If emotionally reflective, use Journal; if neutral observations, use General"""
+- **General observations with feelings**: If emotionally reflective, use Journal; if neutral observations, use General
+- **Feedback vs Journal**: If about a specific employee's performance, use Feedback; if personal reflection on team dynamics, use Journal
+- **Feedback vs Task**: If observing past performance, use Feedback; if assigning future action items to yourself, use Task"""
 
     def _build_metadata_section(self, metadata: TranscriptMetadata) -> str:
         """Build the transcript metadata section."""
@@ -237,13 +241,16 @@ CRITICAL INSTRUCTIONS:
    - "idea" for brainstorming, speculative concepts
    - "research" for learning goals, topics to explore
    - "product" for features, bugs, product feedback
+   - "feedback" for employee performance observations, commendations, improvement notes
    - "general" ONLY if content is truly ambiguous and does not match any other template
    - IMPORTANT: If the user explicitly says "this is a task" or "high-priority task", ALWAYS use "task" template
 
 5. **Required fields**: The "fields" object MUST include all fields marked [REQUIRED] for the selected template.
 
 6. **Confidence**: Set to 0.95+ when the user explicitly names the content type (e.g., "this is a task").
-   Set to 0.9+ if content clearly matches the template type with strong indicators."""
+   Set to 0.9+ if content clearly matches the template type with strong indicators.
+
+7. **Employee feedback tags**: For the feedback template, the employee's first name MUST be the FIRST tag in the tags array."""
 
 
 def build_corrective_prompt(original_response: str, error_message: str) -> str:

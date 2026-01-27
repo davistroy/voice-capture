@@ -132,6 +132,8 @@ Add form fields:
 |-----|-------|------|
 | `audio` | Select "Latest Recording" (magic variable from step 3) | File |
 | `device` | `phone` | Text |
+| `date` | Current Date (use the "Current Date" magic variable) | Text |
+| `location` | Current Location (use the "Get Current Location" action output) | Text |
 
 To select the magic variable:
 1. Tap the value field
@@ -409,6 +411,14 @@ Content-Type: audio/mp4
 Content-Disposition: form-data; name="device"
 
 phone
+--boundary
+Content-Disposition: form-data; name="date"
+
+2026-01-26T14:30:00-05:00
+--boundary
+Content-Disposition: form-data; name="location"
+
+34.0522,-118.2437
 --boundary--
 ```
 

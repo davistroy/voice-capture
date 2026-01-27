@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS captures (
     device TEXT,
     captured_at TIMESTAMP,
     source TEXT DEFAULT 'watcher',  -- Upload source: 'watcher' or 'http'
+    location TEXT,
 
     -- Processing state
     status TEXT NOT NULL DEFAULT 'pending',
@@ -148,6 +149,10 @@ class ConnectionPool:
             try:
                 await conn.executescript(SCHEMA_SQL)
                 await conn.commit()
+
+                # Run migrations for existing databases
+                await self._run_migrations(conn)
+
                 logger.info(f"Database initialized at {self.db_path}")
             finally:
                 await conn.close()
@@ -203,3 +208,22 @@ class ConnectionPool:
     def empty(self) -> bool:
         """Check if pool is empty (for testing)."""
         return self._pool.empty()
+
+    @staticmethod
+    async def _run_migrations(conn: aiosqlite.Connection) -> None:
+        """Run schema migrations for existing databases.
+
+        Checks for missing columns and adds them if needed.
+        Safe to call multiple times.
+
+        Args:
+            conn: Active database connection.
+        """
+        # Check if location column exists
+        cursor = await conn.execute("PRAGMA table_info(captures)")
+        columns = {row[1] for row in await cursor.fetchall()}
+
+        if "location" not in columns:
+            await conn.execute("ALTER TABLE captures ADD COLUMN location TEXT")
+            await conn.commit()
+            logger.info("Migration: added 'location' column to captures table")

@@ -44,6 +44,7 @@ Six content types, each with specific Notion properties (see `docs/prd.md` Secti
 4. **Research** — Topics to explore, questions to investigate, learning goals
 5. **Product** — Features, bugs, enhancements for things being built
 6. **General** — Fallback for anything not matching above (confidence < 0.7)
+7. **Feedback** — Employee performance observations for compiling into reviews
 
 **Extensibility:** Templates are config-driven (YAML in `config/templates/`). Adding a new template = add YAML file + Notion properties. No code changes. See PRD Section 7.8.
 
@@ -70,7 +71,7 @@ All architectural decisions have been made. See `docs/prd.md` Section 12 for the
 | Task sync | Notion-only for MVP |
 | Notion structure | Dedicated area, single database with Type property |
 | Audio format | M4A (native Just Press Record default) |
-| Templates | 6 types (Journal, Task, Idea, Research, Product, General) |
+| Templates | 7 types (Journal, Task, Idea, Research, Product, General, Feedback) |
 | Transcript storage | Page body under `## Raw Transcript` |
 | Classification threshold | 0.7 confidence |
 

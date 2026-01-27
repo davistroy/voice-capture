@@ -13,7 +13,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Tuple
 
-from src.models.capture import Device
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +89,7 @@ class ParsedFilename:
     """
 
     timestamp: datetime
-    device: Device
+    device: str
     was_parsed: bool
 
 
@@ -312,10 +311,9 @@ class FileValidator:
 
             try:
                 timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H%M%S")
-                device = Device.from_string(device_str)
                 return ParsedFilename(
                     timestamp=timestamp,
-                    device=device,
+                    device=device_str,
                     was_parsed=True,
                 )
             except ValueError:
@@ -330,10 +328,10 @@ class FileValidator:
                     timestamp = datetime.strptime(ts_match.group(1), date_format)
 
                     # Try to extract device
-                    device = Device.UNKNOWN
+                    device = "unknown"
                     remaining = base_name.replace(ts_match.group(1), "").strip("_- ")
                     if remaining:
-                        device = Device.from_string(remaining)
+                        device = remaining
 
                     return ParsedFilename(
                         timestamp=timestamp,
@@ -358,7 +356,7 @@ class FileValidator:
 
         return ParsedFilename(
             timestamp=fallback_time,
-            device=Device.UNKNOWN,
+            device="unknown",
             was_parsed=False,
         )
 

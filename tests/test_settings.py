@@ -40,17 +40,36 @@ class TestSettings:
             reload_settings()
 
     def test_validate_required_settings_missing(self) -> None:
-        """Test that missing required settings are detected."""
-        # Clear API keys
-        for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "NOTION_API_KEY"]:
-            os.environ.pop(key, None)
+        """Test that missing required settings are detected.
 
-        settings = reload_settings()
-        missing = settings.validate_required_for_production()
+        Note: We set keys to empty string (not pop) because Pydantic
+        will re-read values from .env file on reload_settings().
+        Setting to empty string overrides the .env file value.
+        """
+        saved = {}
+        for key in [
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "NOTION_API_KEY",
+            "NOTION_VOICE_CAPTURES_DB_ID",
+        ]:
+            saved[key] = os.environ.get(key)
+            os.environ[key] = ""
 
-        assert "OPENAI_API_KEY" in missing
-        assert "ANTHROPIC_API_KEY" in missing
-        assert "NOTION_API_KEY" in missing
+        try:
+            settings = reload_settings()
+            missing = settings.validate_required_for_production()
+
+            assert "OPENAI_API_KEY" in missing
+            assert "ANTHROPIC_API_KEY" in missing
+            assert "NOTION_API_KEY" in missing
+        finally:
+            for key, val in saved.items():
+                if val is not None:
+                    os.environ[key] = val
+                else:
+                    os.environ.pop(key, None)
+            reload_settings()
 
     def test_validate_required_settings_present(self) -> None:
         """Test that present required settings pass validation."""

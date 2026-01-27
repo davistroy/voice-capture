@@ -1,8 +1,8 @@
 """
 Core capture models.
 
-Contains the ProcessingStatus and Device enums, and the CaptureRecord
-dataclass representing a voice capture throughout its lifecycle.
+Contains the ProcessingStatus enum and the CaptureRecord dataclass
+representing a voice capture throughout its lifecycle.
 """
 
 from dataclasses import dataclass, field, asdict
@@ -83,43 +83,6 @@ class ProcessingStatus(Enum):
         return next_status in valid_transitions.get(self, set())
 
 
-class Device(Enum):
-    """
-    Source device for the capture.
-
-    Values are lowercase strings for database storage compatibility.
-    """
-    WATCH = "watch"
-    PHONE = "phone"
-    UNKNOWN = "unknown"
-
-    @classmethod
-    def from_string(cls, value: str) -> "Device":
-        """
-        Create device from string value.
-
-        Handles iOS Shortcut device type values (e.g., "iPhone" -> phone,
-        "Apple Watch" -> watch).
-
-        Args:
-            value: String representation (e.g., "watch", "phone", "iPhone").
-
-        Returns:
-            Matching Device enum, or UNKNOWN if no match.
-        """
-        aliases = {
-            "iphone": "phone",
-            "apple watch": "watch",
-            "applewatch": "watch",
-        }
-        value_lower = value.lower().strip()
-        resolved = aliases.get(value_lower, value_lower)
-        for device in cls:
-            if device.value == resolved:
-                return device
-        return cls.UNKNOWN
-
-
 @dataclass
 class CaptureRecord:
     """
@@ -133,7 +96,7 @@ class CaptureRecord:
         filename: Original filename (e.g., "2026-01-20T143022_watch.m4a").
         original_path: Full path where file was first detected.
         current_path: Current file location (changes as file moves through pipeline).
-        device: Source device (Watch, Phone, Unknown).
+        device: Source device string as reported by capture source (e.g., "Apple Watch", "iPhone").
         captured_at: Timestamp extracted from filename or file mtime.
 
         status: Current processing state.
@@ -156,8 +119,9 @@ class CaptureRecord:
     filename: str = ""
     original_path: str = ""
     current_path: Optional[str] = None
-    device: Device = Device.UNKNOWN
+    device: str = "unknown"
     captured_at: Optional[datetime] = None
+    location: Optional[str] = None
 
     # Processing state
     status: ProcessingStatus = ProcessingStatus.PENDING
@@ -183,8 +147,6 @@ class CaptureRecord:
         # Ensure enums are proper types (handle string conversion)
         if isinstance(self.status, str):
             self.status = ProcessingStatus.from_string(self.status)
-        if isinstance(self.device, str):
-            self.device = Device.from_string(self.device)
 
         # Validate retry_count
         if self.retry_count < 0:
@@ -207,8 +169,9 @@ class CaptureRecord:
             "filename": self.filename,
             "original_path": self.original_path,
             "current_path": self.current_path,
-            "device": self.device.value,
+            "device": self.device,
             "captured_at": self.captured_at.isoformat() if self.captured_at else None,
+            "location": self.location,
             "status": self.status.value,
             "retry_count": self.retry_count,
             "last_error": self.last_error,
@@ -262,8 +225,9 @@ class CaptureRecord:
             filename=data.get("filename", ""),
             original_path=data.get("original_path", ""),
             current_path=data.get("current_path"),
-            device=Device.from_string(data.get("device", "unknown")),
+            device=data.get("device", "unknown"),
             captured_at=_parse_datetime(data.get("captured_at")),
+            location=data.get("location"),
             status=ProcessingStatus.from_string(data.get("status", "pending")),
             retry_count=data.get("retry_count", 0),
             last_error=data.get("last_error"),
@@ -344,8 +308,9 @@ class CaptureRecord:
             filename=row.get("filename", ""),
             original_path=row.get("original_path", ""),
             current_path=row.get("current_path"),
-            device=Device.from_string(row.get("device", "unknown")),
+            device=row.get("device", "unknown"),
             captured_at=_parse_datetime(row.get("captured_at")),
+            location=row.get("location"),
             status=ProcessingStatus.from_string(row.get("status", "pending")),
             retry_count=row.get("retry_count", 0),
             last_error=row.get("last_error"),
@@ -373,8 +338,9 @@ class CaptureRecord:
             "filename": self.filename,
             "original_path": self.original_path,
             "current_path": self.current_path,
-            "device": self.device.value,
+            "device": self.device,
             "captured_at": self.captured_at.isoformat() if self.captured_at else None,
+            "location": self.location,
             "status": self.status.value,
             "retry_count": self.retry_count,
             "last_error": self.last_error,

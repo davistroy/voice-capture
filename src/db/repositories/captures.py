@@ -38,6 +38,7 @@ class CaptureRepository(BaseRepository):
         captured_at: Optional[datetime] = None,
         current_path: Optional[str] = None,
         source: str = "watcher",
+        location: Optional[str] = None,
     ) -> int:
         """Insert a new capture record.
 
@@ -48,6 +49,7 @@ class CaptureRepository(BaseRepository):
             captured_at: Timestamp when audio was captured
             current_path: Current path of the file (if moved)
             source: Upload source ('watcher' for folder watcher, 'http' for HTTP upload)
+            location: Optional location string from capture source
 
         Returns:
             ID of the inserted capture record
@@ -58,8 +60,8 @@ class CaptureRepository(BaseRepository):
         async with self._get_connection() as conn:
             cursor = await conn.execute(
                 """
-                INSERT INTO captures (filename, original_path, device, captured_at, current_path, source)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO captures (filename, original_path, device, captured_at, current_path, source, location)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     filename,
@@ -68,6 +70,7 @@ class CaptureRepository(BaseRepository):
                     captured_at.isoformat() if captured_at else None,
                     current_path,
                     source,
+                    location,
                 ),
             )
             await conn.commit()

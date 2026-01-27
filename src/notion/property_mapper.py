@@ -354,6 +354,29 @@ def create_device_property(device: str) -> Dict[str, Any]:
     }
 
 
+def create_location_property(location: str) -> Dict[str, Any]:
+    """Create Location rich_text property with the provided location string.
+
+    Args:
+        location: Location string from capture metadata (e.g., "Home", "Office").
+
+    Returns:
+        Notion rich_text property object.
+    """
+    stripped = location.strip() if location else ""
+    if not stripped:
+        return {"rich_text": []}
+
+    return {
+        "rich_text": [
+            {
+                "type": "text",
+                "text": {"content": stripped}
+            }
+        ]
+    }
+
+
 def create_type_property(template_display_name: str) -> Dict[str, Any]:
     """Create Type select property from template display name.
 

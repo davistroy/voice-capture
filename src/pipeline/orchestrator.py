@@ -535,6 +535,7 @@ class PipelineOrchestrator:
                 captured_at=capture.captured_at or datetime.utcnow(),
                 device=TextFormatter.format_device_name(capture.device),
                 duration_seconds=capture.transcript_duration_seconds or 0.0,
+                location=capture.location,
             )
 
             # Generate title

@@ -17,7 +17,6 @@ import pytest
 import pytest_asyncio
 
 from src.db.database import Database
-from src.models.capture import Device
 from src.watcher.file_validator import (
     AudioFormat,
     FileValidator,
@@ -245,7 +244,7 @@ class TestFilenameParser:
         result = file_validator.parse_filename(filename)
 
         assert result.was_parsed is True
-        assert result.device == Device.WATCH
+        assert result.device == "watch"
         assert result.timestamp.year == 2026
         assert result.timestamp.month == 1
         assert result.timestamp.day == 20
@@ -260,16 +259,16 @@ class TestFilenameParser:
         result = file_validator.parse_filename(filename)
 
         assert result.was_parsed is True
-        assert result.device == Device.PHONE
+        assert result.device == "phone"
 
     def test_parse_unknown_device(self, file_validator):
-        """Test parsing filename with unknown device."""
+        """Test parsing filename with arbitrary device string passes through."""
         filename = "2026-01-20T093045_tablet.m4a"
 
         result = file_validator.parse_filename(filename)
 
         assert result.was_parsed is True
-        assert result.device == Device.UNKNOWN
+        assert result.device == "tablet"
 
     def test_parse_alternative_timestamp_format(self, file_validator):
         """Test parsing alternative timestamp format."""
@@ -289,7 +288,7 @@ class TestFilenameParser:
         result = file_validator.parse_filename(filename, file_path)
 
         assert result.was_parsed is False
-        assert result.device == Device.UNKNOWN
+        assert result.device == "unknown"
         # Timestamp should be close to file mtime
         assert result.timestamp is not None
 
@@ -300,7 +299,7 @@ class TestFilenameParser:
         result = file_validator.parse_filename(filename)
 
         assert result.was_parsed is False
-        assert result.device == Device.UNKNOWN
+        assert result.device == "unknown"
         # Should use current time as fallback
         assert (datetime.utcnow() - result.timestamp).total_seconds() < 5
 
@@ -467,7 +466,7 @@ class TestFileProcessing:
         # Verify callback was invoked
         assert len(events) == 1
         assert events[0].filename == file_path.name
-        assert events[0].device == Device.WATCH
+        assert events[0].device == "watch"
 
     @pytest.mark.asyncio
     async def test_process_invalid_file_moves_to_failed(
@@ -521,7 +520,7 @@ class TestFileProcessing:
 
         # Device should be UNKNOWN
         assert len(events) == 1
-        assert events[0].device == Device.UNKNOWN
+        assert events[0].device == "unknown"
 
     @pytest.mark.asyncio
     async def test_process_existing_files_on_start(
@@ -705,7 +704,7 @@ class TestPublicInterface:
             "2026-01-20T143022_watch.m4a"
         )
 
-        assert device == Device.WATCH
+        assert device == "watch"
         assert timestamp.year == 2026
         assert timestamp.month == 1
         assert timestamp.day == 20

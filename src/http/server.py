@@ -23,7 +23,6 @@ from src.config.settings import HttpServerSettings, PathsSettings
 from src.db.database import Database
 from src.http.middleware import create_middleware_stack
 from src.http.responses import ErrorCode, error_response, health_response, success_response
-from src.models.capture import Device
 from src.watcher.file_validator import FileValidator
 
 if TYPE_CHECKING:
@@ -290,17 +289,23 @@ class HttpUploadServer:
                 "Request must be multipart/form-data",
             )
 
-        # Extract audio file and device
+        # Extract audio file, device, date, and location
         audio_data: Optional[bytes] = None
         audio_filename: Optional[str] = None
         device_str = "http"
+        date_str: Optional[str] = None
+        location_str: Optional[str] = None
 
         async for field in reader:
             if field.name == "audio":
                 audio_filename = field.filename or "recording.m4a"
                 audio_data = await field.read()
             elif field.name == "device":
-                device_str = (await field.read()).decode("utf-8").strip().lower()
+                device_str = (await field.read()).decode("utf-8").strip()
+            elif field.name == "date":
+                date_str = (await field.read()).decode("utf-8").strip()
+            elif field.name == "location":
+                location_str = (await field.read()).decode("utf-8").strip()
 
         if audio_data is None:
             return error_response(
@@ -354,23 +359,31 @@ class HttpUploadServer:
             # Move to final location
             temp_path.rename(final_path)
 
-            # Parse device
-            device = Device.from_string(device_str)
+            # Parse captured_at from date field if provided
+            captured_at = None
+            if date_str:
+                from src.common.datetime_utils import parse_datetime
+                captured_at = parse_datetime(date_str)
+                if captured_at is None:
+                    logger.warning("Could not parse date string: %s, ignoring", date_str)
 
             # Insert into database
             capture_id = await self.db.insert_capture(
                 filename=new_filename,
                 original_path=str(final_path),
-                device=device.value,
+                device=device_str,
+                captured_at=captured_at,
                 current_path=str(final_path),
                 source="http",
+                location=location_str,
             )
 
             logger.info(
-                "HTTP upload received: capture_id=%d, file=%s, device=%s, size=%d bytes",
+                "HTTP upload received: capture_id=%d, file=%s, device=%s, location=%s, size=%d bytes",
                 capture_id,
                 new_filename,
-                device.value,
+                device_str,
+                location_str,
                 len(audio_data),
             )
 
