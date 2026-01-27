@@ -32,7 +32,7 @@ Press the action button on your Apple Watch to start recording. Press again to s
 
 All four phases implemented and operational.
 
-See [`docs/prd.md`](docs/prd.md) for specification, [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) for work item details.
+See [`docs/prd.md`](docs/prd.md) for specification, [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) for deployment.
 
 ## Architecture
 
@@ -76,8 +76,10 @@ voice-capture/
 │   ├── settings.yaml       # Application configuration
 │   └── classification.yaml # Classification settings
 ├── skills/
-│   └── weekly-voice-synthesis/  # Claude skill for synthesis
+│   ├── weekly-voice-synthesis/  # Claude skill for weekly synthesis
+│   └── summarize-feedback/      # Claude skill for feedback assessment docs
 ├── scripts/
+│   ├── generate_feedback_docx.py # Feedback assessment document generator
 │   └── rclone/             # Google Drive sync scripts
 └── tests/                  # Comprehensive test suite
 ```
