@@ -353,7 +353,7 @@ Respond with JSON:
 
 ## 7. Template Definitions
 
-Six templates covering the primary capture types. The classifier assigns each capture to exactly one template based on content analysis.
+Seven templates covering the primary capture types. The classifier assigns each capture to exactly one template based on content analysis.
 
 ### 7.1 Journal
 
@@ -800,7 +800,7 @@ All architectural questions have been resolved. This section documents the decis
 | **Notion structure** | New dedicated area, no Relations initially |
 | **Database design** | Single database with Type property (all templates share one DB) |
 | **Audio format** | Native Just Press Record format (M4A) — no configuration change |
-| **Templates** | 6 templates: Journal, Task, Idea, Research, Product, General |
+| **Templates** | 7 templates: Journal, Task, Idea, Research, Product, General, Feedback |
 | **Raw transcript storage** | Page body only (under `## Raw Transcript` heading) |
 | **Mood tracking** | Yes, 5 options: Energized / Focused / Neutral / Tired / Frustrated |
 | **Classification threshold** | 0.7 confidence; below that → General template |
