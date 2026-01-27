@@ -44,7 +44,7 @@ from src.notion.property_mapper import (
 from src.notion.content_builder import ContentBuilder, ContentBuildError
 from src.models.transcription import TranscriptionResult
 from src.models.classification import ClassificationResult
-from src.classification.template_config import TemplateConfig
+from src.classification.template_config import FieldConfig, FieldType, TemplateConfig
 
 if TYPE_CHECKING:
     from src.config.settings import Settings
@@ -123,6 +123,7 @@ class NotionService:
         self._page_builder = PageBuilder()
         self._property_mapper = PropertyMapper()
         self._content_builder = ContentBuilder()
+        self._known_properties: Optional[set] = None
 
     @classmethod
     def from_settings(cls, settings: Settings) -> NotionService:
@@ -264,6 +265,9 @@ class NotionService:
         Returns:
             NotionPage with id and url.
         """
+        # Ensure database has all required properties
+        await self._ensure_database_properties(template)
+
         # Build properties from template fields
         properties = self._build_template_properties(
             classification=classification,
@@ -404,6 +408,113 @@ class NotionService:
             duration_seconds=metadata.duration_seconds,
             summary=summary,
         )
+
+    async def _ensure_database_properties(
+        self,
+        template: TemplateConfig,
+    ) -> None:
+        """Ensure all required properties exist in the Notion database.
+
+        Queries the database schema and auto-creates any missing properties
+        defined by the template or needed as standard capture properties.
+        Caches the schema to avoid repeated API calls.
+
+        Args:
+            template: Template configuration with field definitions.
+        """
+        if self._known_properties is None:
+            try:
+                db = await self._client.databases.retrieve(self._database_id)
+                if isinstance(db, dict) and "properties" in db:
+                    self._known_properties = set(db["properties"].keys())
+                else:
+                    self._known_properties = set()
+                logger.debug(
+                    f"Cached {len(self._known_properties)} existing Notion properties"
+                )
+            except Exception as e:
+                logger.warning(f"Could not retrieve database schema: {e}")
+                return
+
+        missing: Dict[str, Any] = {}
+
+        # Check template-specific fields
+        for field_config in template.fields:
+            prop_name = field_config.get_notion_property_name()
+            if prop_name and prop_name not in self._known_properties:
+                schema = self._field_type_to_schema(field_config)
+                if schema:
+                    missing[prop_name] = schema
+
+        # Check standard properties present on all captures
+        standard = {
+            "Device": {"rich_text": {}},
+            "Location": {"rich_text": {}},
+            "Type": {"select": {}},
+            "Tags": {"multi_select": {}},
+            "Comments": {"rich_text": {}},
+            "Related To": {"rich_text": {}},
+        }
+        for prop_name, schema in standard.items():
+            if prop_name not in self._known_properties:
+                missing[prop_name] = schema
+
+        if not missing:
+            return
+
+        try:
+            logger.info(
+                f"Auto-creating {len(missing)} Notion properties: "
+                f"{list(missing.keys())}"
+            )
+            await self._client.databases.update(
+                database_id=self._database_id,
+                properties=missing,
+            )
+            self._known_properties.update(missing.keys())
+        except Exception as e:
+            logger.warning(f"Could not auto-create database properties: {e}")
+            self._known_properties = None  # Reset cache to retry next time
+
+    def _field_type_to_schema(
+        self, field_config: FieldConfig,
+    ) -> Optional[Dict[str, Any]]:
+        """Convert field configuration to Notion database property schema.
+
+        Args:
+            field_config: Field configuration from template.
+
+        Returns:
+            Notion property schema dict, or None for title fields.
+        """
+        ft = field_config.type
+        if ft == FieldType.TITLE:
+            return None  # Title property already exists
+        elif ft == FieldType.RICH_TEXT:
+            return {"rich_text": {}}
+        elif ft == FieldType.DATE:
+            return {"date": {}}
+        elif ft == FieldType.SELECT:
+            if field_config.options:
+                return {
+                    "select": {
+                        "options": [{"name": o} for o in field_config.options]
+                    }
+                }
+            return {"select": {}}
+        elif ft == FieldType.MULTI_SELECT:
+            if field_config.options:
+                return {
+                    "multi_select": {
+                        "options": [{"name": o} for o in field_config.options]
+                    }
+                }
+            return {"multi_select": {}}
+        elif ft == FieldType.NUMBER:
+            return {"number": {}}
+        elif ft == FieldType.CHECKBOX:
+            return {"checkbox": {}}
+        return None
 
     async def _create_page_with_retry(
         self,
