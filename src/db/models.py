@@ -23,6 +23,7 @@ class CaptureRow:
     device: Optional[str] = None
     captured_at: Optional[datetime] = None
     source: str = "watcher"  # Upload source: 'watcher' or 'http'
+    location: Optional[str] = None
 
     # Processing state
     status: str = "pending"
@@ -64,6 +65,7 @@ class CaptureRow:
             device=row.get("device"),
             captured_at=_parse_datetime(row.get("captured_at")),
             source=row.get("source", "watcher"),
+            location=row.get("location"),
             status=row.get("status", "pending"),
             retry_count=row.get("retry_count", 0),
             last_error=row.get("last_error"),

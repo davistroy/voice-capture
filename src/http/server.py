@@ -289,10 +289,12 @@ class HttpUploadServer:
                 "Request must be multipart/form-data",
             )
 
-        # Extract audio file and device
+        # Extract audio file, device, date, and location
         audio_data: Optional[bytes] = None
         audio_filename: Optional[str] = None
         device_str = "http"
+        date_str: Optional[str] = None
+        location_str: Optional[str] = None
 
         async for field in reader:
             if field.name == "audio":
@@ -300,6 +302,10 @@ class HttpUploadServer:
                 audio_data = await field.read()
             elif field.name == "device":
                 device_str = (await field.read()).decode("utf-8").strip()
+            elif field.name == "date":
+                date_str = (await field.read()).decode("utf-8").strip()
+            elif field.name == "location":
+                location_str = (await field.read()).decode("utf-8").strip()
 
         if audio_data is None:
             return error_response(
@@ -353,20 +359,31 @@ class HttpUploadServer:
             # Move to final location
             temp_path.rename(final_path)
 
+            # Parse captured_at from date field if provided
+            captured_at = None
+            if date_str:
+                from src.common.datetime_utils import parse_datetime
+                captured_at = parse_datetime(date_str)
+                if captured_at is None:
+                    logger.warning("Could not parse date string: %s, ignoring", date_str)
+
             # Insert into database
             capture_id = await self.db.insert_capture(
                 filename=new_filename,
                 original_path=str(final_path),
                 device=device_str,
+                captured_at=captured_at,
                 current_path=str(final_path),
                 source="http",
+                location=location_str,
             )
 
             logger.info(
-                "HTTP upload received: capture_id=%d, file=%s, device=%s, size=%d bytes",
+                "HTTP upload received: capture_id=%d, file=%s, device=%s, location=%s, size=%d bytes",
                 capture_id,
                 new_filename,
                 device_str,
+                location_str,
                 len(audio_data),
             )
 

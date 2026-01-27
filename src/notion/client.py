@@ -38,6 +38,7 @@ from src.notion.property_mapper import (
     PropertyMapper,
     PropertyMappingError,
     create_device_property,
+    create_location_property,
     create_type_property,
 )
 from src.notion.content_builder import ContentBuilder, ContentBuildError
@@ -84,10 +85,12 @@ class CaptureMetadata:
         captured_at: Timestamp when audio was captured.
         device: Source device ("Watch", "Phone", or "Unknown").
         duration_seconds: Audio duration in seconds.
+        location: Optional location string from capture source.
     """
     captured_at: datetime
     device: str
     duration_seconds: float
+    location: Optional[str] = None
 
 
 class NotionService:
@@ -329,6 +332,10 @@ class NotionService:
 
         # Add Device property
         properties["Device"] = create_device_property(metadata.device)
+
+        # Add Location property if available
+        if metadata.location:
+            properties["Location"] = create_location_property(metadata.location)
 
         # Add Type property (uses template display name)
         properties["Type"] = create_type_property(template.display_name)

@@ -121,6 +121,7 @@ class CaptureRecord:
     current_path: Optional[str] = None
     device: str = "unknown"
     captured_at: Optional[datetime] = None
+    location: Optional[str] = None
 
     # Processing state
     status: ProcessingStatus = ProcessingStatus.PENDING
@@ -170,6 +171,7 @@ class CaptureRecord:
             "current_path": self.current_path,
             "device": self.device,
             "captured_at": self.captured_at.isoformat() if self.captured_at else None,
+            "location": self.location,
             "status": self.status.value,
             "retry_count": self.retry_count,
             "last_error": self.last_error,
@@ -225,6 +227,7 @@ class CaptureRecord:
             current_path=data.get("current_path"),
             device=data.get("device", "unknown"),
             captured_at=_parse_datetime(data.get("captured_at")),
+            location=data.get("location"),
             status=ProcessingStatus.from_string(data.get("status", "pending")),
             retry_count=data.get("retry_count", 0),
             last_error=data.get("last_error"),
@@ -307,6 +310,7 @@ class CaptureRecord:
             current_path=row.get("current_path"),
             device=row.get("device", "unknown"),
             captured_at=_parse_datetime(row.get("captured_at")),
+            location=row.get("location"),
             status=ProcessingStatus.from_string(row.get("status", "pending")),
             retry_count=row.get("retry_count", 0),
             last_error=row.get("last_error"),
@@ -336,6 +340,7 @@ class CaptureRecord:
             "current_path": self.current_path,
             "device": self.device,
             "captured_at": self.captured_at.isoformat() if self.captured_at else None,
+            "location": self.location,
             "status": self.status.value,
             "retry_count": self.retry_count,
             "last_error": self.last_error,

@@ -124,6 +124,7 @@ class Database:
         captured_at: Optional[datetime] = None,
         current_path: Optional[str] = None,
         source: str = "watcher",
+        location: Optional[str] = None,
     ) -> int:
         """Insert a new capture record.
 
@@ -134,6 +135,7 @@ class Database:
             captured_at: Timestamp when audio was captured
             current_path: Current path of the file (if moved)
             source: Upload source ('watcher' for folder watcher, 'http' for HTTP upload)
+            location: Optional location string from capture source
 
         Returns:
             ID of the inserted capture record
@@ -148,6 +150,7 @@ class Database:
             captured_at=captured_at,
             current_path=current_path,
             source=source,
+            location=location,
         )
 
     async def update_status(
