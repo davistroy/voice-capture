@@ -85,6 +85,7 @@ fields:
       - Idea
       - Research
       - Product
+      - Quick Update
       - None
 
   - name: priority
