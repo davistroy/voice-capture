@@ -1,0 +1,279 @@
+# Summarize Feedback Skill
+# Claude Code skill for generating employee feedback assessment documents
+#
+# Version: 1.0
+# Author: Troy Davis / Stratfield Consulting
+# Date: January 2026
+
+name: summarize-feedback
+display_name: Summarize Feedback
+description: |
+  Reads Feedback-type entries from the Notion Voice Captures database for a
+  specified employee, synthesizes strengths and areas for development, and
+  generates a professional .docx assessment document. Notion is read-only;
+  output is a local Word document.
+
+version: "1.0.0"
+enabled: true
+
+# Invocation configuration
+trigger:
+  type: manual
+  commands:
+    - summarize-feedback
+  aliases:
+    - sf
+    - feedback
+
+# Prerequisites that must be satisfied before skill execution
+prerequisites:
+  - name: notion_mcp
+    description: Notion MCP must be configured and connected
+    check: mcp_server_connected
+    server_name: notion
+  - name: voice_captures_database
+    description: Voice Captures database must be accessible
+    check: notion_database_accessible
+    database_env_var: NOTION_VOICE_CAPTURES_DB_ID
+  - name: python_docx
+    description: python-docx must be installed for .docx generation
+    check: python_package_installed
+    package_name: docx
+    install_hint: "pip install python-docx>=1.0"
+
+# Input parameters
+parameters:
+  - name: employee_name
+    type: string
+    description: >
+      Employee name to match against the "Related To" property in Notion.
+      Partial matches are supported (e.g., "Sarah" matches "Sarah Chen").
+    required: true
+  - name: days
+    type: integer
+    description: Number of days to look back for feedback entries (default 365)
+    default: 365
+    min: 1
+    max: 1095
+  - name: start_date
+    type: date
+    description: Override start date (ISO 8601 format, e.g., 2025-01-27)
+    required: false
+  - name: end_date
+    type: date
+    description: Override end date (ISO 8601 format, e.g., 2026-01-27)
+    required: false
+  - name: output_path
+    type: string
+    description: >
+      File path for the generated .docx. Defaults to
+      ./output/Feedback_Summary_{Employee_Name}_{YYYY-MM-DD_HHMMSS}.docx
+    required: false
+
+# Skill behavior specification
+behavior:
+  # Step 1: Check prerequisites
+  check_prerequisites:
+    description: Verify Notion MCP is connected and python-docx is installed
+    actions:
+      - verify: notion_mcp_connected
+      - verify: python_docx_installed
+        fallback: "Run: pip install python-docx>=1.0"
+
+  # Step 2: Compute date range
+  compute_date_range:
+    description: >
+      Calculate the assessment period. If start_date/end_date are provided,
+      use those. Otherwise, end_date = today and start_date = today minus {days}.
+    inputs:
+      - days
+      - start_date
+      - end_date
+
+  # Step 3: Query Notion for feedback entries
+  query_feedback_entries:
+    description: >
+      Search the Voice Captures database for entries matching:
+      Type = "Feedback" AND Related To contains {employee_name} AND Date within range.
+    source: notion_mcp
+    database: ${NOTION_VOICE_CAPTURES_DB_ID}
+    method: |
+      Use mcp__notion__notion-search to find pages in the Voice Captures database,
+      then filter results where:
+        - Type property equals "Feedback"
+        - Related To property contains the employee_name (case-insensitive partial match)
+        - Date property falls within the computed date range
+
+  # Step 4: Fetch full page content for each entry
+  fetch_page_content:
+    description: >
+      For each matching entry, use mcp__notion__notion-fetch to retrieve the
+      full page Markdown content including Summary, Context, Actionable Items,
+      and Raw Transcript sections.
+    source: notion_mcp
+    method: |
+      For each page ID from Step 3, call mcp__notion__notion-fetch to get the
+      page body. Parse the Markdown to extract:
+        - Summary (from ## Summary section)
+        - Context (from ## Context section, if present)
+        - Actionable Items (from ## Actionable Items section, if present)
+        - Raw Transcript (from ## Raw Transcript section)
+      Also capture page properties: Title, Date, Tags, and the Feedback Type
+      from the Summary section header (Positive/Constructive/Observation).
+
+  # Step 5: Synthesize assessment via Claude
+  synthesize_assessment:
+    description: >
+      Feed all structured feedback entries to Claude with the synthesis prompt.
+      Output is a structured JSON assessment with executive summary, strengths,
+      areas for development, patterns, and recommendations.
+    model: claude-sonnet-4-20250514
+    max_tokens: 4096
+    template: feedback_synthesis_template
+
+  # Step 6: Generate .docx document
+  generate_document:
+    description: >
+      Combine synthesis output and raw entries into a single JSON payload.
+      Write to a temp file. Run generate_feedback_docx.py to produce the .docx.
+    method: |
+      1. Build combined JSON with: employee_name, assessment_period, generation_date,
+         total_entries, synthesis (from Step 5), entries (from Step 4)
+      2. Write JSON to temp file in scratchpad directory
+      3. Determine output path (use parameter or default convention)
+      4. Run: python scripts/generate_feedback_docx.py --input {temp.json} --output {output_path}
+
+  # Step 7: Report results
+  report_results:
+    description: >
+      Inform the user of the generated file path, entry count, and assessment period.
+
+# Synthesis prompt template
+synthesis_prompt: |
+  You are analyzing employee feedback entries to produce a structured performance assessment.
+
+  ## Employee
+  {employee_name}
+
+  ## Assessment Period
+  {start_date} to {end_date}
+
+  ## Feedback Entries
+  {formatted_entries}
+
+  ## Instructions
+
+  Analyze ALL feedback entries above and produce a structured JSON assessment.
+  Be specific — cite dates and actual observations from the entries. Do not
+  fabricate evidence. If there are only a few entries, note the limited sample
+  size in the executive summary.
+
+  The assessment should be balanced and evidence-based. Every strength and area
+  for development MUST be supported by specific entries with dates.
+
+  ## Output Format
+
+  Return ONLY valid JSON matching this structure:
+
+  ```json
+  {
+    "executive_summary": "3-5 sentence overall assessment of the employee during this period. Note the total number of feedback entries and the general trajectory (improving, consistent, declining, mixed).",
+    "strengths": [
+      {
+        "name": "Short strength name (2-4 words)",
+        "description": "1-2 sentence description of the strength and its impact.",
+        "evidence": [
+          {
+            "date": "YYYY-MM-DD",
+            "summary": "Brief reference to the specific feedback entry supporting this strength."
+          }
+        ],
+        "frequency": "Consistent|Frequent|Occasional|Emerging"
+      }
+    ],
+    "areas_for_development": [
+      {
+        "name": "Short area name (2-4 words)",
+        "description": "1-2 sentence description of the development area and why it matters.",
+        "evidence": [
+          {
+            "date": "YYYY-MM-DD",
+            "summary": "Brief reference to the specific feedback entry supporting this area."
+          }
+        ],
+        "pattern": "Recurring|Occasional|Situational|Improving"
+      }
+    ],
+    "patterns_and_themes": {
+      "trends": "Description of how performance has trended over the assessment period.",
+      "relationships": "Connections between different feedback observations (e.g., strengths that compensate for gaps).",
+      "situational": "Contexts or situations where performance notably varies."
+    },
+    "recommendations": [
+      {
+        "type": "Continue|Develop|Stretch",
+        "recommendation": "Specific, actionable recommendation.",
+        "rationale": "Why this recommendation is important based on the evidence."
+      }
+    ]
+  }
+  ```
+
+  ## Recommendation Types
+  - **Continue**: Behaviors and skills to maintain and reinforce
+  - **Develop**: Areas needing improvement with specific development actions
+  - **Stretch**: Growth opportunities that build on existing strengths
+
+# Error handling
+error_handling:
+  no_entries_found:
+    action: inform_user
+    message: |
+      No Feedback entries found for "{employee_name}" in the period {start_date} to {end_date}.
+
+      Possible causes:
+      1. No feedback has been captured for this employee
+      2. The employee name doesn't match the "Related To" property in Notion
+         (check for exact spelling, try first name only)
+      3. The date range is too narrow — try increasing the `days` parameter
+
+      Would you like to:
+      1. Try a different name or spelling?
+      2. Expand the date range?
+      3. List all employees with Feedback entries?
+
+  notion_connection_failed:
+    action: abort
+    message: |
+      Unable to connect to Notion. Please verify:
+      1. Notion MCP is configured in your Claude settings
+      2. The MCP server is running and connected
+      3. Your Notion API key has access to the Voice Captures database
+
+  python_docx_missing:
+    action: abort
+    message: |
+      python-docx is not installed. Install it with:
+        pip install python-docx>=1.0
+
+  generation_failed:
+    action: inform_user
+    message: |
+      Failed to generate the .docx document. Error: {error_message}
+
+      Try running the script directly to debug:
+        python scripts/generate_feedback_docx.py --input {temp_json_path} --output {output_path}
+
+# Metadata
+metadata:
+  author: Troy Davis
+  created: 2026-01-27
+  updated: 2026-01-27
+  tags:
+    - feedback
+    - employee-assessment
+    - performance-review
+    - notion
+    - voice-capture
+    - docx
+  documentation: skills/summarize-feedback/README.md
