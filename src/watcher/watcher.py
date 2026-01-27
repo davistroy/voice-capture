@@ -17,7 +17,7 @@ from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from src.db.database import Database
-from src.models.capture import Device, ProcessingStatus
+from src.models.capture import ProcessingStatus
 from src.watcher.file_validator import FileValidator, ValidationResult, ParsedFilename
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class NewCaptureEvent:
     capture_id: int
     filename: str
     file_path: Path
-    device: Device
+    device: str
     captured_at: datetime
 
 
@@ -371,7 +371,7 @@ class FolderWatcher:
 
             logger.info(
                 f"Queued capture: id={capture_id}, file={file_path.name}, "
-                f"device={parsed.device.value}, parsed={parsed.was_parsed}"
+                f"device={parsed.device}, parsed={parsed.was_parsed}"
             )
 
         except asyncio.CancelledError:
@@ -517,7 +517,7 @@ class FolderWatcher:
         filename: str,
         original_path: str,
         current_path: str,
-        device: Device,
+        device: str,
         captured_at: datetime,
     ) -> int:
         """Insert capture record into database.
@@ -526,7 +526,7 @@ class FolderWatcher:
             filename: Original filename
             original_path: Original file location
             current_path: Current file location
-            device: Source device
+            device: Source device string
             captured_at: Capture timestamp
 
         Returns:
@@ -535,7 +535,7 @@ class FolderWatcher:
         capture_id = await self.db.insert_capture(
             filename=filename,
             original_path=original_path,
-            device=device.value,
+            device=device,
             captured_at=captured_at,
             current_path=current_path,
             source="watcher",
@@ -573,7 +573,7 @@ class FolderWatcher:
         result = self._validator.validate_audio_file(file_path)
         return result.is_valid
 
-    def parse_filename(self, filename: str) -> tuple[datetime, Device]:
+    def parse_filename(self, filename: str) -> tuple[datetime, str]:
         """Extract timestamp and device from filename.
 
         Expected format: {timestamp}_{device}.m4a
@@ -583,7 +583,7 @@ class FolderWatcher:
             filename: Filename to parse
 
         Returns:
-            Tuple of (timestamp, device)
+            Tuple of (timestamp, device_string)
         """
         parsed = self._validator.parse_filename(filename)
         return parsed.timestamp, parsed.device

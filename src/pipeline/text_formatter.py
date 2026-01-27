@@ -56,25 +56,20 @@ class TextFormatter:
     def format_device_name(device: Optional[str]) -> str:
         """Format device string for display.
 
-        Normalizes device names to title case for known devices,
-        or returns "Unknown" for unrecognized devices.
+        Returns the raw device string as-is, preserving whatever value
+        was passed from the capture source (e.g., iOS Shortcut).
+        Returns "Unknown" only if device is empty or None.
 
         Args:
-            device: Raw device string (e.g., "watch", "phone").
+            device: Raw device string (e.g., "Apple Watch", "iPhone").
 
         Returns:
-            Formatted device name (e.g., "Watch", "Phone", "Unknown").
+            The device string as-is, or "Unknown" if empty/None.
         """
         if not device:
             return "Unknown"
 
-        device_lower = device.lower()
-        if device_lower == "watch":
-            return "Watch"
-        elif device_lower == "phone":
-            return "Phone"
-        else:
-            return "Unknown"
+        return device
 
     @staticmethod
     def truncate_text(

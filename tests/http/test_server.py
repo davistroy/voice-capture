@@ -23,7 +23,6 @@ from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from src.config.settings import HttpServerSettings, PathsSettings
 from src.http.responses import ErrorCode, error_response, health_response, success_response
 from src.http.server import HttpUploadServer
-from src.models.capture import Device
 from src.watcher.file_validator import AudioFormat, FileValidator, ValidationResult
 
 

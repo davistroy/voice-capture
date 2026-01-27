@@ -3,7 +3,6 @@ Unit tests for domain models.
 
 Tests cover:
 - ProcessingStatus enum and state transitions
-- Device enum and string conversion
 - TranscriptionResult dataclass and serialization
 - ClassificationResult dataclass and serialization
 - CaptureRecord dataclass, validation, and database serialization
@@ -15,7 +14,6 @@ from datetime import datetime
 
 from src.models import (
     ProcessingStatus,
-    Device,
     TranscriptionResult,
     ClassificationResult,
     CaptureRecord,
@@ -84,29 +82,6 @@ class TestProcessingStatus:
         """FAILED can transition back to PENDING for retry."""
         assert ProcessingStatus.FAILED.can_transition_to(ProcessingStatus.PENDING)
         assert not ProcessingStatus.FAILED.can_transition_to(ProcessingStatus.TRANSCRIBING)
-
-
-class TestDevice:
-    """Tests for Device enum."""
-
-    def test_enum_values(self):
-        """All expected devices exist with correct string values."""
-        assert Device.WATCH.value == "watch"
-        assert Device.PHONE.value == "phone"
-        assert Device.UNKNOWN.value == "unknown"
-
-    def test_from_string_valid(self):
-        """from_string creates correct enum from valid strings."""
-        assert Device.from_string("watch") == Device.WATCH
-        assert Device.from_string("WATCH") == Device.WATCH
-        assert Device.from_string("Watch") == Device.WATCH
-        assert Device.from_string("phone") == Device.PHONE
-
-    def test_from_string_unknown_returns_unknown(self):
-        """from_string returns UNKNOWN for unrecognized values."""
-        assert Device.from_string("invalid") == Device.UNKNOWN
-        assert Device.from_string("") == Device.UNKNOWN
-        assert Device.from_string("tablet") == Device.UNKNOWN
 
 
 class TestTranscriptionResult:
@@ -414,7 +389,7 @@ class TestCaptureRecord:
         assert record.id is None
         assert record.filename == ""
         assert record.status == ProcessingStatus.PENDING
-        assert record.device == Device.UNKNOWN
+        assert record.device == "unknown"
         assert record.retry_count == 0
         assert record.transcription is None
         assert record.classification is None
@@ -427,14 +402,14 @@ class TestCaptureRecord:
             filename="2026-01-20T143022_watch.m4a",
             original_path="/inbox/2026-01-20T143022_watch.m4a",
             current_path="/processing/2026-01-20T143022_watch.m4a",
-            device=Device.WATCH,
+            device="watch",
             captured_at=now,
             status=ProcessingStatus.TRANSCRIBING,
             retry_count=1,
         )
         assert record.id == 42
         assert record.filename == "2026-01-20T143022_watch.m4a"
-        assert record.device == Device.WATCH
+        assert record.device == "watch"
         assert record.status == ProcessingStatus.TRANSCRIBING
         assert record.retry_count == 1
 
@@ -445,7 +420,7 @@ class TestCaptureRecord:
             device="watch",
             status="transcribing",
         )
-        assert record.device == Device.WATCH
+        assert record.device == "watch"
         assert record.status == ProcessingStatus.TRANSCRIBING
 
     def test_validation_negative_retry_count(self):
@@ -457,7 +432,7 @@ class TestCaptureRecord:
         """to_dict produces complete dictionary with None values."""
         record = CaptureRecord(
             filename="test.m4a",
-            device=Device.WATCH,
+            device="watch",
             status=ProcessingStatus.PENDING,
         )
         d = record.to_dict()
@@ -509,7 +484,7 @@ class TestCaptureRecord:
             id=42,
             filename="test.m4a",
             original_path="/inbox/test.m4a",
-            device=Device.WATCH,
+            device="watch",
             captured_at=now,
             status=ProcessingStatus.COMPLETE,
             transcription=transcription,
@@ -562,7 +537,7 @@ class TestCaptureRecord:
 
         assert record.id == 42
         assert record.filename == "test.m4a"
-        assert record.device == Device.WATCH
+        assert record.device == "watch"
         assert record.status == ProcessingStatus.COMPLETE
         assert record.transcription is not None
         assert record.transcription.text == "Test transcript content"
@@ -607,7 +582,7 @@ class TestCaptureRecord:
             id=42,
             filename="test.m4a",
             original_path="/inbox/test.m4a",
-            device=Device.WATCH,
+            device="watch",
             status=ProcessingStatus.COMPLETE,
             transcription=transcription,
             classification=classification,
@@ -634,7 +609,7 @@ class TestCaptureRecord:
         record = CaptureRecord(
             filename="test.m4a",
             original_path="/inbox/test.m4a",
-            device=Device.PHONE,
+            device="phone",
             status=ProcessingStatus.PENDING,
         )
         d = record.to_db_dict()
@@ -747,7 +722,7 @@ class TestIntegration:
         record = CaptureRecord(
             filename="2026-01-20T143022_watch.m4a",
             original_path="/inbox/2026-01-20T143022_watch.m4a",
-            device=Device.WATCH,
+            device="watch",
             captured_at=datetime(2026, 1, 20, 14, 30, 22),
             status=ProcessingStatus.PENDING,
             created_at=datetime.now(),
@@ -800,7 +775,7 @@ class TestIntegration:
             filename="test.m4a",
             original_path="/inbox/test.m4a",
             current_path="/processing/test.m4a",
-            device=Device.WATCH,
+            device="watch",
             captured_at=now,
             status=ProcessingStatus.COMPLETE,
             retry_count=1,

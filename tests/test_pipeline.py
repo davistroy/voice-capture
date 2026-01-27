@@ -886,25 +886,19 @@ class TestOrchestratorDeviceFormatting:
     """Tests for device string formatting.
 
     Work item 6.6: Device formatting was extracted to TextFormatter class.
-    These tests verify the TextFormatter is correctly integrated.
+    Device passthrough: raw device strings are returned as-is.
     """
 
-    def test_format_device_watch(self):
-        """Verify 'watch' is formatted as 'Watch'."""
+    def test_format_device_passthrough(self):
+        """Verify device strings are passed through as-is."""
         from src.pipeline.text_formatter import TextFormatter
-        assert TextFormatter.format_device_name("watch") == "Watch"
-        assert TextFormatter.format_device_name("WATCH") == "Watch"
+        assert TextFormatter.format_device_name("watch") == "watch"
+        assert TextFormatter.format_device_name("Apple Watch") == "Apple Watch"
+        assert TextFormatter.format_device_name("iPhone") == "iPhone"
 
-    def test_format_device_phone(self):
-        """Verify 'phone' is formatted as 'Phone'."""
+    def test_format_device_fallback(self):
+        """Verify None/empty defaults to 'Unknown'."""
         from src.pipeline.text_formatter import TextFormatter
-        assert TextFormatter.format_device_name("phone") == "Phone"
-        assert TextFormatter.format_device_name("PHONE") == "Phone"
-
-    def test_format_device_unknown(self):
-        """Verify unknown devices default to 'Unknown'."""
-        from src.pipeline.text_formatter import TextFormatter
-        assert TextFormatter.format_device_name("tablet") == "Unknown"
         assert TextFormatter.format_device_name(None) == "Unknown"
         assert TextFormatter.format_device_name("") == "Unknown"
 

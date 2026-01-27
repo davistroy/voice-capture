@@ -23,7 +23,6 @@ from src.config.settings import HttpServerSettings, PathsSettings
 from src.db.database import Database
 from src.http.middleware import create_middleware_stack
 from src.http.responses import ErrorCode, error_response, health_response, success_response
-from src.models.capture import Device
 from src.watcher.file_validator import FileValidator
 
 if TYPE_CHECKING:
@@ -300,7 +299,7 @@ class HttpUploadServer:
                 audio_filename = field.filename or "recording.m4a"
                 audio_data = await field.read()
             elif field.name == "device":
-                device_str = (await field.read()).decode("utf-8").strip().lower()
+                device_str = (await field.read()).decode("utf-8").strip()
 
         if audio_data is None:
             return error_response(
@@ -354,14 +353,11 @@ class HttpUploadServer:
             # Move to final location
             temp_path.rename(final_path)
 
-            # Parse device
-            device = Device.from_string(device_str)
-
             # Insert into database
             capture_id = await self.db.insert_capture(
                 filename=new_filename,
                 original_path=str(final_path),
-                device=device.value,
+                device=device_str,
                 current_path=str(final_path),
                 source="http",
             )
@@ -370,7 +366,7 @@ class HttpUploadServer:
                 "HTTP upload received: capture_id=%d, file=%s, device=%s, size=%d bytes",
                 capture_id,
                 new_filename,
-                device.value,
+                device_str,
                 len(audio_data),
             )
 
