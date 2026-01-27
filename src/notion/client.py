@@ -357,18 +357,18 @@ class NotionService:
         elif "Tags" not in properties:
             properties["Tags"] = {"multi_select": []}
 
-        # Add Date property if not already set from fields
-        if "Date" not in properties:
-            # Find date field config to get the correct property name
-            date_property_name = "Date"
-            for field_config in template.fields:
-                prop_name = field_config.get_notion_property_name()
-                if field_config.type.value == "date" and prop_name and "created" in field_config.name.lower():
-                    date_property_name = prop_name
-                    break
-            properties[date_property_name] = {
-                "date": {"start": metadata.captured_at.isoformat()}
-            }
+        # Always set Date property from capture metadata (includes time)
+        # This overrides the classifier's date-only string to ensure
+        # Notion displays both date and time
+        date_property_name = "Date"
+        for field_config in template.fields:
+            prop_name = field_config.get_notion_property_name()
+            if field_config.type.value == "date" and prop_name and prop_name == "Date":
+                date_property_name = prop_name
+                break
+        properties[date_property_name] = {
+            "date": {"start": metadata.captured_at.isoformat()}
+        }
 
         # Ensure Transcription property is always set from raw transcript
         if "Transcription" not in properties:
