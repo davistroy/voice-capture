@@ -39,6 +39,7 @@ from src.notion.property_mapper import (
     PropertyMappingError,
     create_device_property,
     create_location_property,
+    create_rich_text_property,
     create_type_property,
 )
 from src.notion.content_builder import ContentBuilder, ContentBuildError
@@ -273,6 +274,7 @@ class NotionService:
             classification=classification,
             template=template,
             metadata=metadata,
+            transcription=transcription,
             title_override=title_override,
         )
 
@@ -291,17 +293,20 @@ class NotionService:
         classification: ClassificationResult,
         template: TemplateConfig,
         metadata: CaptureMetadata,
+        transcription: TranscriptionResult,
         title_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Build Notion properties from template field configuration.
 
         Maps extracted fields to Notion properties using the property mapper.
-        Adds standard properties: Device, Type, and ensures Title is set.
+        Adds standard properties: Device, Type, Transcription, and ensures
+        Title is set.
 
         Args:
             classification: Classification result with extracted fields.
             template: Template configuration with field definitions.
             metadata: Capture metadata.
+            transcription: Transcription result for standard Transcription property.
             title_override: Optional title override.
 
         Returns:
@@ -364,6 +369,12 @@ class NotionService:
             properties[date_property_name] = {
                 "date": {"start": metadata.captured_at.isoformat()}
             }
+
+        # Ensure Transcription property is always set from raw transcript
+        if "Transcription" not in properties:
+            properties["Transcription"] = create_rich_text_property(
+                transcription.text or ""
+            )
 
         return properties
 

@@ -377,6 +377,27 @@ def create_location_property(location: str) -> Dict[str, Any]:
     }
 
 
+def create_rich_text_property(text: str) -> Dict[str, Any]:
+    """Create a rich_text property, splitting for Notion's 2000 char limit.
+
+    Args:
+        text: Text content.
+
+    Returns:
+        Notion rich_text property object.
+    """
+    if not text:
+        return {"rich_text": []}
+    if len(text) <= 2000:
+        return {"rich_text": [{"type": "text", "text": {"content": text}}]}
+    return {
+        "rich_text": [
+            {"type": "text", "text": {"content": text[i:i + 2000]}}
+            for i in range(0, len(text), 2000)
+        ]
+    }
+
+
 def create_type_property(template_display_name: str) -> Dict[str, Any]:
     """Create Type select property from template display name.
 

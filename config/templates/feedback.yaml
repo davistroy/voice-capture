@@ -74,7 +74,6 @@ fields:
       Default to Observation if tone is ambiguous.
     required: false
     default: Observation
-    notion_property: Comments
 
   - name: summary
     type: rich_text
@@ -110,6 +109,7 @@ fields:
     description: Employee name as first tag, then topic tags
     extraction: |
       CRITICAL: The employee's first name MUST be the first tag.
+      Include the feedback type (Positive, Constructive, or Observation) as the second tag.
       Then add 2-4 topic tags based on the feedback content.
       Include tags like: leadership, communication, technical-skills,
       teamwork, initiative, project-management, client-relations,
@@ -124,7 +124,7 @@ fields:
       Copy the COMPLETE original transcript text exactly as provided.
       Do not summarize, edit, or modify the text in any way.
     required: true
-    notion_property: Transcription
+    notion_property: Comments
 
 notion:
   database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
