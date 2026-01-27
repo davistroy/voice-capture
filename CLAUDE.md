@@ -106,8 +106,10 @@ voice-capture/
 │   ├── settings.yaml       # Application configuration
 │   └── classification.yaml # Classification settings
 ├── skills/
-│   └── weekly-voice-synthesis/  # Claude skill for synthesis
+│   ├── weekly-voice-synthesis/  # Claude skill for weekly synthesis
+│   └── summarize-feedback/      # Claude skill for feedback assessment docs
 ├── scripts/
+│   ├── generate_feedback_docx.py # Feedback assessment document generator
 │   └── rclone/             # Google Drive sync scripts
 └── tests/                  # Comprehensive test suite
 ```
