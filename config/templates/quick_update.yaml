@@ -1,0 +1,156 @@
+# Template: Quick Update
+# =====================
+#
+# Daily work status updates for compiling into weekly status reports.
+# The user will always say "quick update" within the first 12 words
+# of the recording, making this a high-confidence trigger.
+
+name: quick_update
+display_name: Quick Update
+description: |
+  Daily work status updates for compiling into weekly status reports.
+  Brief verbal check-ins on what was accomplished, what's in progress,
+  any blockers, and what's planned next. Designed to be rolled up at
+  end of week into a status update for management.
+enabled: true
+
+triggers:
+  patterns:
+    - "quick update"
+    - "daily update"
+    - "status update"
+    - "end of day update"
+    - "here's my update"
+    - "here is my update"
+    - "giving a quick update"
+    - "daily status"
+    - "work update"
+
+  indicators:
+    - work status reporting
+    - daily check-in language
+    - progress reporting on projects or tasks
+    - mentions of what was accomplished today
+    - mentions of blockers or issues
+    - plans for tomorrow or next steps
+    - the phrase quick update appearing within the first 12 words
+
+fields:
+  - name: title
+    type: title
+    description: Date plus brief theme of the update
+    extraction: |
+      Generate a title in the format "[Date] - [Brief theme]"
+      The theme should be 2-5 words capturing the main work topic.
+      Example: "2026-01-27 - API integration progress"
+      Example: "2026-01-27 - Client deliverable and testing"
+      DO NOT include "Quick Update" in the title — the Type property handles that.
+    required: true
+    notion_property: Title
+
+  - name: date
+    type: date
+    description: Capture timestamp
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date
+
+  - name: work_completed
+    type: rich_text
+    description: What was accomplished or worked on
+    extraction: |
+      Extract what the speaker accomplished or worked on today.
+      Use bullet points if multiple items are mentioned.
+      Focus on outcomes and deliverables, not just activities.
+      Example: "Completed API endpoint for user export. Reviewed PR #42."
+    required: true
+
+  - name: in_progress
+    type: rich_text
+    description: What is currently being worked on but not yet finished
+    extraction: |
+      Extract work that is underway but not yet complete.
+      Include estimated completion if mentioned.
+      Leave empty if not mentioned.
+    required: false
+
+  - name: blockers
+    type: rich_text
+    description: Any blockers, issues, or things waiting on others
+    extraction: |
+      Extract any blockers, impediments, or dependencies on others.
+      Include who or what is blocking progress if mentioned.
+      Leave empty if no blockers are mentioned.
+    required: false
+
+  - name: next_steps
+    type: rich_text
+    description: What is planned for tomorrow or next
+    extraction: |
+      Extract planned work for the next day or upcoming period.
+      Include any meetings, deadlines, or commitments mentioned.
+      Leave empty if not mentioned.
+    required: false
+
+  - name: projects
+    type: rich_text
+    description: Projects or clients referenced
+    extraction: |
+      Extract any project names, client names, or workstreams mentioned.
+      Separate multiple projects with commas.
+      Example: "Voice Capture pipeline, Stratfield website redesign"
+    required: false
+    notion_property: Related To
+
+  - name: tags
+    type: multi_select
+    description: Topic tags for organization
+    extraction: |
+      Generate 2-5 relevant topic tags based on content.
+      Always include "status-update" as the first tag.
+      Include project names, client names, and work categories.
+      Example: ["status-update", "voice-capture", "api-development"]
+    required: false
+    notion_property: Tags
+
+  - name: transcription
+    type: rich_text
+    description: Full raw transcript text
+    extraction: |
+      Copy the COMPLETE original transcript text exactly as provided.
+      Do not summarize, edit, or modify the text in any way.
+    required: true
+    notion_property: Transcription
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Work Completed
+  {{ work_completed | default("No completed work mentioned.") }}
+
+  {% if in_progress %}
+  ## In Progress
+  {{ in_progress }}
+  {% endif %}
+
+  {% if blockers %}
+  ## Blockers
+  {{ blockers }}
+  {% endif %}
+
+  {% if next_steps %}
+  ## Next Steps
+  {{ next_steps }}
+  {% endif %}
+
+  {% if projects %}
+  ## Projects
+  {{ projects }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*

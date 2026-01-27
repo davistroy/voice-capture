@@ -132,8 +132,11 @@ class PromptBuilder:
    - Reflections, feelings, mood -> use "journal" template
    - "idea", brainstorming, "what if" -> use "idea" template
    - "feedback on", "feedback for", "performance note" -> use "feedback" template
+   - "quick update" within the first 12 words -> use "quick_update" template
 
 2. **EXPLICIT TYPE DECLARATIONS** — If the transcript explicitly names its type, ALWAYS use that template with high confidence:
+   - "quick update" appearing within the FIRST 12 WORDS of the transcript -> "quick_update" template, confidence 0.98+
+     This takes HIGHEST PRIORITY. Check for "quick update" first before any other classification.
    - "This is a task", "high-priority task", "I have a task" -> "task" template, confidence 0.95+
    - "This is an idea", "here's an idea", "I had an idea" -> "idea" template, confidence 0.95+
    - "I want to research", "need to look into" -> "research" template, confidence 0.9+
@@ -171,7 +174,9 @@ When content could fit multiple templates, use these guidelines:
 - **Questions about topics**: If about specific learning goals, use Research; if about product features, use Product
 - **General observations with feelings**: If emotionally reflective, use Journal; if neutral observations, use General
 - **Feedback vs Journal**: If about a specific employee's performance, use Feedback; if personal reflection on team dynamics, use Journal
-- **Feedback vs Task**: If observing past performance, use Feedback; if assigning future action items to yourself, use Task"""
+- **Feedback vs Task**: If observing past performance, use Feedback; if assigning future action items to yourself, use Task
+- **Quick Update vs Journal**: If "quick update" appears in the first 12 words and content reports on work status, use Quick Update; if purely reflective without work reporting, use Journal
+- **Quick Update vs Task**: Quick Update reports on work already done or in progress; Task creates new action items to be done in the future"""
 
     def _build_metadata_section(self, metadata: TranscriptMetadata) -> str:
         """Build the transcript metadata section."""
@@ -242,7 +247,9 @@ CRITICAL INSTRUCTIONS:
    - "research" for learning goals, topics to explore
    - "product" for features, bugs, product feedback
    - "feedback" for employee performance observations, commendations, improvement notes
+   - "quick_update" for daily work status reports (look for "quick update" in the first 12 words)
    - "general" ONLY if content is truly ambiguous and does not match any other template
+   - IMPORTANT: If "quick update" appears in the first 12 words, ALWAYS use "quick_update" template
    - IMPORTANT: If the user explicitly says "this is a task" or "high-priority task", ALWAYS use "task" template
 
 5. **Required fields**: The "fields" object MUST include all fields marked [REQUIRED] for the selected template.
