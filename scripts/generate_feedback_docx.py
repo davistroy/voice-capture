@@ -20,7 +20,6 @@ try:
     from docx import Document
     from docx.shared import Pt, Inches, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.section import WD_ORIENT
 except ImportError:
     print(
         "ERROR: python-docx is not installed.\n"
