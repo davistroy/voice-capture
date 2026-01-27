@@ -57,13 +57,14 @@ fields:
       or "feedback about". Extract first and last name if given.
       If only a first name is provided, use that.
     required: true
-    notion_property: Employee
+    notion_property: Related To
 
   - name: feedback_type
-    type: select
+    type: rich_text
     description: Nature of the feedback
     extraction: |
-      Determine the feedback type from tone and language:
+      Determine the feedback type from tone and language.
+      Output ONLY one of these exact values:
       - Positive: "great job", "well done", "excellent", "impressed",
         "outstanding", "kudos", "strong performance", "exceeded expectations"
       - Constructive: "needs improvement", "should work on", "concern",
@@ -73,11 +74,7 @@ fields:
       Default to Observation if tone is ambiguous.
     required: false
     default: Observation
-    options:
-      - Positive
-      - Constructive
-      - Observation
-    notion_property: Feedback Type
+    notion_property: Comments
 
   - name: summary
     type: rich_text
@@ -134,7 +131,7 @@ notion:
 
 page_body_template: |
   ## Summary
-  {{ summary | default("No summary provided.") }}
+  **{{ feedback_type | default("Observation") }}** — {{ summary | default("No summary provided.") }}
 
   {% if context %}
   ## Context
