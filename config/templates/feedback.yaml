@@ -1,0 +1,153 @@
+# Template: Feedback
+# ==================
+#
+# Employee performance feedback for compiling into performance reviews.
+# Observations about employee behavior, skill assessments, commendations,
+# and improvement suggestions.
+#
+# Implementation Plan: Phase 3
+
+name: feedback
+display_name: Feedback
+description: |
+  Employee performance feedback for compiling into performance reviews.
+enabled: true
+
+triggers:
+  patterns:
+    - "feedback on"
+    - "feedback for"
+    - "feedback about"
+    - "performance note"
+    - "note about"
+    - "observation about"
+    - "performance feedback"
+
+  indicators:
+    - employee evaluation language
+    - performance observations
+    - behavior descriptions
+    - skill assessments
+    - commendation or improvement suggestions
+
+fields:
+  - name: title
+    type: title
+    description: "Employee Name - Brief Topic"
+    extraction: |
+      Generate a title in the format "Employee Name - Brief Topic".
+      Extract the employee name from the transcript and pair with a
+      2-5 word summary of the feedback topic.
+      Example: "Sarah Chen - Q1 Project Leadership" or "Mike Johnson - Client Communication"
+    required: true
+    notion_property: Title
+
+  - name: date
+    type: date
+    description: Capture timestamp
+    extraction: Use capture metadata timestamp
+    required: true
+    notion_property: Date
+
+  - name: employee_name
+    type: rich_text
+    description: Name of employee receiving feedback
+    extraction: |
+      Look for the name mentioned after "feedback on", "feedback for",
+      or "feedback about". Extract first and last name if given.
+      If only a first name is provided, use that.
+    required: true
+    notion_property: Employee
+
+  - name: feedback_type
+    type: select
+    description: Nature of the feedback
+    extraction: |
+      Determine the feedback type from tone and language:
+      - Positive: "great job", "well done", "excellent", "impressed",
+        "outstanding", "kudos", "strong performance", "exceeded expectations"
+      - Constructive: "needs improvement", "should work on", "concern",
+        "area for growth", "needs to", "could improve", "struggling with"
+      - Observation: neutral performance notes, factual behavioral
+        descriptions without strong positive or negative tone
+      Default to Observation if tone is ambiguous.
+    required: false
+    default: Observation
+    options:
+      - Positive
+      - Constructive
+      - Observation
+    notion_property: Feedback Type
+
+  - name: summary
+    type: rich_text
+    description: 2-3 sentence summary of feedback
+    extraction: |
+      Distill the feedback into 2-3 concise sentences capturing the
+      key observation, behavior, and any recommended action.
+      Write in third-person perspective for clarity.
+    required: true
+
+  - name: context
+    type: rich_text
+    description: Project, client, or situation context
+    extraction: |
+      Extract any mentioned project name, client name, meeting,
+      or situation that provides context for the feedback.
+      Leave empty if no specific context is mentioned.
+    required: false
+
+  - name: actionable_items
+    type: rich_text
+    description: Specific behaviors to continue or improve
+    extraction: |
+      Extract specific, actionable recommendations:
+      - For positive feedback: behaviors to continue or expand
+      - For constructive feedback: concrete improvement steps
+      - For observations: any suggested next steps
+      Leave empty if no specific actions are mentioned.
+    required: false
+
+  - name: tags
+    type: multi_select
+    description: Employee name as first tag, then topic tags
+    extraction: |
+      CRITICAL: The employee's first name MUST be the first tag.
+      Then add 2-4 topic tags based on the feedback content.
+      Include tags like: leadership, communication, technical-skills,
+      teamwork, initiative, project-management, client-relations,
+      problem-solving, mentoring, time-management.
+    required: false
+    notion_property: Tags
+
+  - name: transcription
+    type: rich_text
+    description: Full raw transcript text
+    extraction: |
+      Copy the COMPLETE original transcript text exactly as provided.
+      Do not summarize, edit, or modify the text in any way.
+    required: true
+    notion_property: Transcription
+
+notion:
+  database_id: ${NOTION_VOICE_CAPTURES_DB_ID}
+
+page_body_template: |
+  ## Summary
+  {{ summary | default("No summary provided.") }}
+
+  {% if context %}
+  ## Context
+  {{ context }}
+  {% endif %}
+
+  {% if actionable_items %}
+  ## Actionable Items
+  {{ actionable_items }}
+  {% endif %}
+
+  ## Raw Transcript
+  {{ transcript }}
+
+  ---
+  *Processed: {{ processed_at }} | Device: {{ device }} | Duration: {{ duration }}s*
