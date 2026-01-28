@@ -31,7 +31,7 @@ FROM python:3.11-slim as runtime
 # Labels for container metadata
 LABEL maintainer="Troy Davis <troy@stratfieldconsulting.com>"
 LABEL description="Voice Capture to Notion Pipeline"
-LABEL version="0.1.0"
+LABEL version="1.0.0"
 
 # Create non-root user for security
 RUN groupadd -r voicecapture && useradd -r -g voicecapture voicecapture

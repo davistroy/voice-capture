@@ -9,7 +9,7 @@ Press the action button on your Apple Watch to start recording. Press again to s
 1. **Capture** — iOS Shortcut saves recording to Google Drive
 2. **Sync** — Home server pulls files via rclone
 3. **Transcribe** — OpenAI Whisper API converts speech to text
-4. **Classify** — Claude Sonnet categorizes into one of 7 templates
+4. **Classify** — Claude Sonnet categorizes into one of 8 templates
 5. **Store** — Structured page created in Notion
 6. **Synthesize** — Weekly summary via Claude skill (on-demand)
 
@@ -23,6 +23,7 @@ Press the action button on your Apple Watch to start recording. Press again to s
 | Research | Topics to explore, learning goals |
 | Product | Features, bugs, product notes |
 | Feedback | Employee performance observations |
+| Quick Update | Daily work status reports |
 | General | Fallback for unclassified content |
 
 ## Status
@@ -72,7 +73,7 @@ voice-capture/
 │   ├── interfaces/         # Abstract interfaces for services
 │   └── main.py             # Application entry point
 ├── config/
-│   ├── templates/          # Template definitions (7 YAML files)
+│   ├── templates/          # Template definitions (8 YAML files)
 │   ├── settings.yaml       # Application configuration
 │   └── classification.yaml # Classification settings
 ├── skills/
@@ -87,7 +88,7 @@ voice-capture/
 ## Implementation Phases (Complete)
 
 1. **Phase 1 (MVP)** — Core pipeline: watcher, transcription, Notion integration, orchestrator
-2. **Phase 2** — Classification: Claude Sonnet, 7 YAML templates, dynamic property mapping
+2. **Phase 2** — Classification: Claude Sonnet, 8 YAML templates, dynamic property mapping
 3. **Phase 3** — Reliability: Pushover notifications, health checks, retry hardening, recovery CLI
 4. **Phase 4** — Synthesis: Weekly summary generation, Notion query, sparse week handling
 
