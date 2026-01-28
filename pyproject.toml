@@ -53,6 +53,8 @@ dependencies = [
     "rich>=13.0",
     # Template rendering
     "jinja2>=3.0",
+    # Document generation
+    "python-docx>=1.0",
 ]
 
 [project.optional-dependencies]

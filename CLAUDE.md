@@ -37,7 +37,7 @@ Five-layer pipeline running on a home server:
 
 ## Templates
 
-Seven content types, each with specific Notion properties (see `docs/prd.md` Section 7):
+Eight content types, each with specific Notion properties (see `docs/prd.md` Section 7):
 1. **Journal** — Personal reflections, daily observations, meeting reflections, mood tracking
 2. **Task** — Action items, to-dos, reminders, commitments
 3. **Idea** — Brain dumps, speculative concepts, creative possibilities
@@ -45,6 +45,7 @@ Seven content types, each with specific Notion properties (see `docs/prd.md` Sec
 5. **Product** — Features, bugs, enhancements for things being built
 6. **General** — Fallback for anything not matching above (confidence < 0.7)
 7. **Feedback** — Employee performance observations for compiling into reviews
+8. **Quick Update** — Daily work status reports, brief progress updates
 
 **Extensibility:** Templates are config-driven (YAML in `config/templates/`). Adding a new template = add YAML file + Notion properties. No code changes. See PRD Section 7.8.
 
@@ -54,7 +55,7 @@ Seven content types, each with specific Notion properties (see `docs/prd.md` Sec
 
 All four phases implemented:
 1. **Phase 1 (MVP)**: Core pipeline — watcher, transcription, Notion integration, orchestrator
-2. **Phase 2**: Classification — Claude Sonnet, 7 YAML templates, dynamic property mapping
+2. **Phase 2**: Classification — Claude Sonnet, 8 YAML templates, dynamic property mapping
 3. **Phase 3**: Reliability — Pushover notifications, health checks, retry hardening, recovery CLI
 4. **Phase 4**: Synthesis — Weekly summary generation via Claude skill
 
@@ -71,7 +72,7 @@ All architectural decisions have been made. See `docs/prd.md` Section 12 for the
 | Task sync | Notion-only for MVP |
 | Notion structure | Dedicated area, single database with Type property |
 | Audio format | M4A (native Just Press Record default) |
-| Templates | 7 types (Journal, Task, Idea, Research, Product, General, Feedback) |
+| Templates | 8 types (Journal, Task, Idea, Research, Product, General, Feedback, Quick Update) |
 | Transcript storage | Page body under `## Raw Transcript` |
 | Classification threshold | 0.7 confidence |
 
@@ -102,7 +103,7 @@ voice-capture/
 │   ├── interfaces/         # Abstract interfaces for services
 │   └── main.py             # Application entry point
 ├── config/
-│   ├── templates/          # Template definitions (7 YAML files)
+│   ├── templates/          # Template definitions (8 YAML files)
 │   ├── settings.yaml       # Application configuration
 │   └── classification.yaml # Classification settings
 ├── skills/
